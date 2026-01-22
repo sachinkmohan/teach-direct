@@ -1,0 +1,248 @@
+import { Link, useNavigate } from "react-router-dom"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/useAuth"
+import { useAuthStore } from "@/stores/authStore"
+import { useUserProfile } from "@/hooks/useUser"
+import { useTeacherProfile } from "@/hooks/useTeachers"
+
+export function DashboardPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { logout } = useAuthStore()
+  const { data: userProfile, isLoading: userLoading, error: userError } = useUserProfile()
+  const { data: teacherProfile, isLoading: teacherLoading, error: teacherError } = useTeacherProfile()
+
+  const isTeacher = userProfile?.role === 'teacher'
+  const hasCompletedProfile = teacherProfile?.hourly_rate != null
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
+  }
+
+  // Show errors if queries failed
+  if (userError) {
+    return (
+      <div className="bg-slate-50 min-h-[calc(100vh-4rem)]">
+        <div className="container mx-auto px-4 py-8">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <h3 className="font-semibold text-red-800">Error Loading Profile</h3>
+              <p className="text-red-700 text-sm mt-2">
+                {userError instanceof Error ? userError.message : 'Failed to load user profile'}
+              </p>
+              <p className="text-red-600 text-xs mt-2">
+                This may happen if your user record wasn't created. Please try logging out and signing up again,
+                or run the database setup SQL in Supabase.
+              </p>
+              <div className="mt-4 space-x-4">
+                <Button onClick={handleLogout} variant="outline">Log Out</Button>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (userLoading) {
+    return (
+      <div className="bg-slate-50 min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // For teachers, wait for teacher profile to load too
+  if (isTeacher && teacherLoading) {
+    return (
+      <div className="bg-slate-50 min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading teacher profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-slate-50 min-h-[calc(100vh-4rem)]">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600 mt-2">
+            Welcome back, {userProfile?.display_name || user?.email}
+          </p>
+          <span className="inline-block mt-2 px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded-full capitalize">
+            {userProfile?.role || 'user'}
+          </span>
+        </div>
+
+        {/* Teacher Profile Setup Banner */}
+        {isTeacher && !hasCompletedProfile && (
+          <Card className="mb-6 border-amber-200 bg-amber-50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-amber-800">Complete Your Profile</h3>
+                  <p className="text-amber-700 text-sm">
+                    Set up your teacher profile to start accepting students
+                  </p>
+                </div>
+                <Link to="/teacher/onboarding">
+                  <Button>Set Up Profile</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Teacher error (non-blocking) */}
+        {isTeacher && teacherError && (
+          <Card className="mb-6 border-amber-200 bg-amber-50">
+            <CardContent className="pt-6">
+              <p className="text-amber-700 text-sm">
+                Could not load teacher profile. You may need to set it up.
+              </p>
+              <Link to="/teacher/onboarding" className="mt-2 inline-block">
+                <Button size="sm">Set Up Profile</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {isTeacher ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Profile</CardTitle>
+                  <CardDescription>Manage your teacher profile</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {hasCompletedProfile ? (
+                    <>
+                      <p className="text-slate-600 mb-4">
+                        Rate: ${teacherProfile?.hourly_rate}/hr
+                      </p>
+                      <Link to="/teacher/onboarding">
+                        <Button variant="outline">Edit Profile</Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <Link to="/teacher/onboarding">
+                      <Button>Complete Setup</Button>
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Lessons</CardTitle>
+                  <CardDescription>View scheduled lessons</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-600 mb-4">No upcoming lessons</p>
+                  <Button variant="outline" disabled>View Lessons</Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Earnings</CardTitle>
+                  <CardDescription>Track your earnings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-slate-900">
+                    ${(teacherProfile?.available_balance || 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-slate-500">Available balance</p>
+                  {(teacherProfile?.pending_balance || 0) > 0 && (
+                    <p className="text-sm text-amber-600 mt-1">
+                      ${teacherProfile?.pending_balance?.toFixed(2)} pending
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Lessons</CardTitle>
+                  <CardDescription>View and manage your lessons</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-600 mb-4">You have no upcoming lessons</p>
+                  <Link to="/teachers">
+                    <Button variant="outline">Browse Teachers</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Packages</CardTitle>
+                  <CardDescription>Manage your lesson packages</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-600 mb-4">No active packages</p>
+                  <Link to="/teachers">
+                    <Button variant="outline">Purchase Package</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Messages</CardTitle>
+                  <CardDescription>Chat with your teachers</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-600 mb-4">No new messages</p>
+                  <Button variant="outline" disabled>View Messages</Button>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Info</CardTitle>
+              <CardDescription>Your account details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-slate-600">Email</p>
+                  <p className="font-medium text-slate-900">{user?.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600">Role</p>
+                  <p className="font-medium text-slate-900 capitalize">{userProfile?.role}</p>
+                </div>
+                <div className="pt-4">
+                  <Button onClick={handleLogout} variant="outline" className="text-red-600 hover:text-red-700">
+                    Log Out
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
