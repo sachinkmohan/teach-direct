@@ -7,9 +7,13 @@ import { useUserProfile } from "@/hooks/useUser"
 import { useTeacherProfile } from "@/hooks/useTeachers"
 import { useUpcomingLessons } from "@/hooks/useLessons"
 import { usePackages, type Package } from "@/hooks/usePackages"
+import { useTransactions, useWithdraw } from "@/hooks/useTransactions"
 import { BookingModal } from "@/components/lessons/BookingModal"
+import { WithdrawModal } from "@/components/wallet/WithdrawModal"
+import { TransactionHistory } from "@/components/wallet/TransactionHistory"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect, useMemo } from "react"
+import { format } from "date-fns"
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -26,7 +30,10 @@ export function DashboardPage() {
   )
   const [connectingStripe, setConnectingStripe] = useState(false)
   const [bookingPackage, setBookingPackage] = useState<Package | null>(null)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
+  const { data: transactions, isLoading: transactionsLoading } = useTransactions()
+  const withdraw = useWithdraw()
 
   // Fetch teacher names for packages
   useEffect(() => {
@@ -96,17 +103,23 @@ export function DashboardPage() {
     }
   }
 
-  // Handle Escape key to close booking modal
+  // Handle Escape key to close modals
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && bookingPackage) {
-        setBookingPackage(null)
+      if (event.key === 'Escape') {
+        if (bookingPackage) setBookingPackage(null)
+        if (showWithdrawModal) setShowWithdrawModal(false)
       }
     }
 
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [bookingPackage])
+  }, [bookingPackage, showWithdrawModal])
+
+  const handleWithdraw = async (amount: number) => {
+    await withdraw.mutateAsync(amount)
+    setShowWithdrawModal(false)
+  }
 
   // Handle Stripe Connect redirect
   useEffect(() => {
@@ -351,6 +364,20 @@ export function DashboardPage() {
                       ${teacherProfile?.pending_balance?.toFixed(2)} pending
                     </p>
                   )}
+                  {(teacherProfile?.available_balance || 0) >= 1 && isStripeConnected && (
+                    <Button
+                      onClick={() => setShowWithdrawModal(true)}
+                      className="mt-4 w-full"
+                      size="sm"
+                    >
+                      Withdraw Funds
+                    </Button>
+                  )}
+                  {(teacherProfile?.available_balance || 0) >= 1 && !isStripeConnected && (
+                    <p className="text-xs text-slate-500 mt-4">
+                      Connect Stripe to withdraw earnings
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </>
@@ -368,18 +395,18 @@ export function DashboardPage() {
                         {upcomingLessons.length}
                       </p>
                       <p className="text-slate-600 mb-4">upcoming lesson{upcomingLessons.length !== 1 ? 's' : ''}</p>
-                      <Link to="/lessons">
-                        <Button variant="outline">View Lessons</Button>
-                      </Link>
                     </>
                   ) : (
-                    <>
-                      <p className="text-slate-600 mb-4">You have no upcoming lessons</p>
-                      <Link to="/teachers">
-                        <Button variant="outline">Browse Teachers</Button>
-                      </Link>
-                    </>
+                    <p className="text-slate-600 mb-4">No upcoming lessons</p>
                   )}
+                  <div className="flex gap-2">
+                    <Link to="/lessons">
+                      <Button variant="outline">View All Lessons</Button>
+                    </Link>
+                    <Link to="/teachers">
+                      <Button variant="outline">Browse Teachers</Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -391,26 +418,66 @@ export function DashboardPage() {
                 <CardContent>
                   {activePackages.length > 0 ? (
                     <div className="space-y-3">
-                      {activePackages.map(pkg => (
-                          <div key={pkg.id} className="p-3 bg-slate-50 rounded-lg">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <p className="font-medium text-slate-900">
+                      {activePackages.map(pkg => {
+                        const usedClasses = pkg.total_classes - pkg.remaining_classes
+                        const progressPercent = (usedClasses / pkg.total_classes) * 100
+
+                        return (
+                          <div key={pkg.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <p className="font-semibold text-slate-900 text-lg">
                                   {teacherNames[pkg.teacher_id] || 'Teacher'}
                                 </p>
-                                <p className="text-sm text-slate-600">
-                                  {pkg.remaining_classes} of {pkg.total_classes} classes remaining
+                                <p className="text-xs text-slate-500 mt-1">
+                                  Purchased {format(new Date(pkg.created_at), 'MMM d, yyyy')}
                                 </p>
                               </div>
                               <Button
                                 size="sm"
                                 onClick={() => setBookingPackage(pkg)}
+                                disabled={pkg.remaining_classes <= 0}
                               >
                                 Book Lesson
                               </Button>
                             </div>
+
+                            {/* Progress Bar */}
+                            <div className="mb-3">
+                              <div className="flex justify-between text-xs text-slate-600 mb-1">
+                                <span>{usedClasses} used</span>
+                                <span>{pkg.remaining_classes} remaining</span>
+                              </div>
+                              <div className="w-full bg-slate-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${progressPercent}%` }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {/* Package Details */}
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <p className="text-slate-500 text-xs">Total Classes</p>
+                                <p className="font-medium text-slate-900">{pkg.total_classes}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 text-xs">Price per Class</p>
+                                <p className="font-medium text-slate-900">${pkg.price_per_class.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 text-xs">Total Paid</p>
+                                <p className="font-medium text-slate-900">${pkg.total_amount.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 text-xs">Status</p>
+                                <p className="font-medium text-slate-900 capitalize">{pkg.status}</p>
+                              </div>
+                            </div>
                           </div>
-                        ))}
+                        )
+                      })}
                       <Link to="/teachers" className="block mt-4">
                         <Button variant="outline" size="sm" className="w-full">
                           Purchase More
@@ -430,16 +497,61 @@ export function DashboardPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Messages</CardTitle>
-                  <CardDescription>Chat with your teachers</CardDescription>
+                  <CardTitle>Spending Summary</CardTitle>
+                  <CardDescription>Your payment history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 mb-4">No new messages</p>
-                  <Button variant="outline" disabled>View Messages</Button>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900">
+                        ${transactions?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-sm text-slate-500">Total Packages Purchased</p>
+                    </div>
+
+                    <div className="pt-3 border-t">
+                      <p className="text-lg font-semibold text-slate-900">
+                        ${transactions?.filter(t => t.type === 'lesson_payment').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-sm text-slate-500">Lessons Confirmed (Paid Out)</p>
+                    </div>
+
+                    {activePackages.length > 0 && (
+                      <div className="pt-3 border-t">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-lg font-semibold text-slate-900">
+                              {activePackages.reduce((sum, pkg) => sum + pkg.remaining_classes, 0)}
+                            </p>
+                            <p className="text-sm text-slate-500">Classes Remaining</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-semibold text-slate-900">
+                              ${activePackages.reduce((sum, pkg) => sum + (pkg.remaining_classes * pkg.price_per_class), 0).toFixed(2)}
+                            </p>
+                            <p className="text-sm text-slate-500">Remaining Value</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </>
           )}
+        </div>
+
+        {/* Transaction History */}
+        <div className="mt-8">
+          <TransactionHistory
+            transactions={
+              isTeacher
+                ? transactions?.filter(t => t.type === 'lesson_payment' || t.type === 'withdrawal') || []
+                : transactions?.filter(t => t.type === 'purchase' || t.type === 'refund' || t.type === 'lesson_payment') || []
+            }
+            isLoading={transactionsLoading}
+            userRole={isTeacher ? 'teacher' : 'student'}
+          />
         </div>
 
         <div className="mt-8">
@@ -480,6 +592,18 @@ export function DashboardPage() {
               // Refresh will happen automatically via React Query invalidation
             }}
             onCancel={() => setBookingPackage(null)}
+          />
+        </div>
+      )}
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <WithdrawModal
+            availableBalance={teacherProfile?.available_balance || 0}
+            onSubmit={handleWithdraw}
+            onCancel={() => setShowWithdrawModal(false)}
+            isLoading={withdraw.isPending}
           />
         </div>
       )}

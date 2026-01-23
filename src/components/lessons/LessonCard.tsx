@@ -1,4 +1,4 @@
-import { format, isPast, isFuture } from 'date-fns'
+import { format, isPast, isFuture, formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LessonWithDetails } from '@/hooks/useLessons'
@@ -8,6 +8,8 @@ interface LessonCardProps {
   userRole: 'student' | 'teacher'
   onCancel?: (lessonId: string) => void
   onComplete?: (lessonId: string) => void
+  onConfirm?: (lessonId: string) => void
+  onDispute?: (lessonId: string) => void
   onJoin?: (meetingLink: string) => void
 }
 
@@ -31,12 +33,15 @@ const statusLabels: Record<LessonStatus, string> = {
   cancelled: 'Cancelled',
 }
 
-export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: LessonCardProps) {
+export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, onDispute, onJoin }: LessonCardProps) {
   const scheduledDate = new Date(lesson.scheduled_at)
   const isUpcoming = isFuture(scheduledDate)
   const isPastLesson = isPast(scheduledDate)
   const canCancel = isUpcoming && lesson.status === 'scheduled'
   const canComplete = isPastLesson && lesson.status === 'scheduled' && userRole === 'teacher'
+  const canConfirm = lesson.status === 'pending_confirmation' && userRole === 'student'
+  const canDispute = lesson.status === 'pending_confirmation' && userRole === 'student'
+  const autoReleaseDate = lesson.auto_release_at ? new Date(lesson.auto_release_at) : null
 
   const otherPerson = userRole === 'student' ? lesson.teacher : lesson.student
   const otherPersonLabel = userRole === 'student' ? 'Teacher' : 'Student'
@@ -73,10 +78,10 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: L
             </div>
 
             <p className="text-sm text-slate-600">
-              {otherPersonLabel}: <span className="font-medium">{otherPerson?.display_name || otherPerson?.email}</span>
+              {otherPersonLabel}: <span className="font-medium">{otherPerson?.display_name || otherPerson?.email || 'Unknown'}</span>
             </p>
 
-            {lesson.meeting_link && (
+            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && (
               <p className="text-sm">
                 <span className="text-slate-600">Meeting: </span>
                 <a
@@ -95,11 +100,34 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: L
                 Notes: {lesson.notes}
               </p>
             )}
+
+            {/* Auto-release countdown for pending_confirmation */}
+            {lesson.status === 'pending_confirmation' && autoReleaseDate && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
+                <p className="text-amber-700">
+                  {userRole === 'student' ? (
+                    <>
+                      Funds will be automatically released to teacher{' '}
+                      <span className="font-medium">
+                        {formatDistanceToNow(autoReleaseDate, { addSuffix: true })}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Awaiting student confirmation. Auto-release{' '}
+                      <span className="font-medium">
+                        {formatDistanceToNow(autoReleaseDate, { addSuffix: true })}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
-            {lesson.meeting_link && isUpcoming && lesson.status === 'scheduled' && (
+            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && isUpcoming && lesson.status === 'scheduled' && (
               <Button
                 onClick={() => onJoin?.(lesson.meeting_link!)}
                 className="w-full md:w-auto"
@@ -115,6 +143,25 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: L
                 className="w-full md:w-auto"
               >
                 Mark Complete
+              </Button>
+            )}
+
+            {canConfirm && onConfirm && (
+              <Button
+                onClick={() => onConfirm(lesson.id)}
+                className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+              >
+                Confirm Lesson
+              </Button>
+            )}
+
+            {canDispute && onDispute && (
+              <Button
+                onClick={() => onDispute(lesson.id)}
+                variant="outline"
+                className="w-full md:w-auto text-amber-600 hover:text-amber-700 border-amber-300"
+              >
+                Dispute
               </Button>
             )}
 

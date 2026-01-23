@@ -225,6 +225,7 @@ export function useCancelLesson() {
 // Update lesson (add meeting link, notes, etc.)
 export function useUpdateLesson() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   return useMutation({
     mutationFn: async ({
@@ -234,6 +235,23 @@ export function useUpdateLesson() {
       lessonId: string;
       updates: Partial<Pick<Lesson, "meeting_link" | "notes" | "status">>;
     }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // First verify the user is involved in this lesson
+      const { data: lesson, error: fetchError } = await supabase
+        .from("lessons")
+        .select("teacher_id, student_id")
+        .eq("id", lessonId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!lesson) throw new Error("Lesson not found");
+
+      // Verify user is either the teacher or student
+      if (lesson.teacher_id !== user.id && lesson.student_id !== user.id) {
+        throw new Error("You don't have permission to update this lesson");
+      }
+
       const { data, error } = await supabase
         .from("lessons")
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -243,6 +261,84 @@ export function useUpdateLesson() {
 
       if (error) throw error;
       return data as Lesson;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+    },
+  });
+}
+
+// Complete a lesson (teacher marks as done)
+export function useCompleteLesson() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async (lessonId: string) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.rpc("complete_lesson_atomic", {
+        p_lesson_id: lessonId,
+        p_teacher_id: user.id,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+    },
+  });
+}
+
+// Confirm a lesson (student confirms or auto-release triggers this)
+export function useConfirmLesson() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (lessonId: string) => {
+      const { data, error } = await supabase.rpc("release_lesson_funds", {
+        p_lesson_id: lessonId,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+// Dispute a lesson (student disputes)
+export function useDisputeLesson() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async ({
+      lessonId,
+      reason,
+    }: {
+      lessonId: string;
+      reason: string;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.rpc("dispute_lesson", {
+        p_lesson_id: lessonId,
+        p_student_id: user.id,
+        p_reason: reason,
+      });
+
+      if (error) throw error;
+      return { success: data };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });

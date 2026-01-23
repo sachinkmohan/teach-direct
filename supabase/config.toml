@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.purchase-package]
 verify_jwt = false
+
+[functions.auto-release-lessons]
+verify_jwt = false
+
+[functions.withdraw-funds]
+verify_jwt = false
