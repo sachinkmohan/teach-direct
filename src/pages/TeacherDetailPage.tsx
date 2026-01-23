@@ -1,18 +1,57 @@
-import { useParams, Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { Elements } from '@stripe/react-stripe-js'
 import { useTeacher } from '@/hooks/useTeachers'
 import { TeacherProfileView } from '@/components/teacher'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
+import { stripePromise } from '@/lib/stripe'
+import { PackagePurchase } from '@/components/packages/PackagePurchase'
 
 export function TeacherDetailPage() {
   const { teacherId } = useParams<{ teacherId: string }>()
   const { data: teacher, isLoading, error } = useTeacher(teacherId || '')
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const [purchaseModal, setPurchaseModal] = useState<{
+    type: 'single' | 'package_5' | 'package_10'
+    price: number
+    classes: number
+  } | null>(null)
 
   const handlePurchase = (packageType: 'single' | '5' | '10') => {
-    // This will be implemented in Checkpoint 5
-    console.log('Purchase package:', packageType)
-    alert(`Package purchase will be implemented in Checkpoint 5! (${packageType} class package)`)
+    if (!teacher) return
+
+    let type: 'single' | 'package_5' | 'package_10'
+    let price: number
+    let classes: number
+
+    if (packageType === 'single') {
+      type = 'single'
+      price = teacher.hourly_rate || 0
+      classes = 1
+    } else if (packageType === '5') {
+      type = 'package_5'
+      price = teacher.package_5_rate || 0
+      classes = 5
+    } else {
+      type = 'package_10'
+      price = teacher.package_10_rate || 0
+      classes = 10
+    }
+
+    setPurchaseModal({ type, price, classes })
+  }
+
+  const handlePurchaseSuccess = () => {
+    setPurchaseModal(null)
+    navigate('/dashboard', {
+      state: { message: 'Package purchased successfully!' }
+    })
+  }
+
+  const handlePurchaseCancel = () => {
+    setPurchaseModal(null)
   }
 
   if (isLoading) {
@@ -63,6 +102,23 @@ export function TeacherDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Purchase Modal */}
+      {purchaseModal && teacher && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Elements stripe={stripePromise}>
+            <PackagePurchase
+              teacherId={teacher.user_id}
+              teacherName={teacher.users?.display_name || teacher.users?.email || 'Teacher'}
+              packageType={purchaseModal.type}
+              price={purchaseModal.price}
+              classes={purchaseModal.classes}
+              onSuccess={handlePurchaseSuccess}
+              onCancel={handlePurchaseCancel}
+            />
+          </Elements>
+        </div>
+      )}
     </div>
   )
 }
