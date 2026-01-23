@@ -5,6 +5,7 @@ import type { Transaction } from '@/hooks/useTransactions'
 interface TransactionHistoryProps {
   transactions: Transaction[]
   isLoading?: boolean
+  userRole?: 'teacher' | 'student'
 }
 
 const typeLabels: Record<Transaction['type'], string> = {
@@ -27,7 +28,26 @@ const statusColors: Record<Transaction['status'], string> = {
   failed: 'text-red-600',
 }
 
-export function TransactionHistory({ transactions, isLoading }: TransactionHistoryProps) {
+export function TransactionHistory({ transactions, isLoading, userRole }: TransactionHistoryProps) {
+  const getTransactionSign = (transaction: Transaction) => {
+    // Withdrawals are always negative (money leaving)
+    if (transaction.type === 'withdrawal') return '-'
+
+    // Refunds are always positive (money returning)
+    if (transaction.type === 'refund') return '+'
+
+    // Purchases are always negative (money spent)
+    if (transaction.type === 'purchase') return '-'
+
+    // Lesson payments:
+    // - For teachers: positive (money earned)
+    // - For students: negative (money spent from package)
+    if (transaction.type === 'lesson_payment') {
+      return userRole === 'teacher' ? '+' : '-'
+    }
+
+    return '+'
+  }
   if (isLoading) {
     return (
       <Card>
@@ -83,7 +103,7 @@ export function TransactionHistory({ transactions, isLoading }: TransactionHisto
                 </span>
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {transaction.type === 'withdrawal' ? '-' : '+'} $
+                    {getTransactionSign(transaction)} $
                     {transaction.amount.toFixed(2)}
                   </p>
                   <p className="text-xs text-slate-500">

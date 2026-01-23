@@ -225,6 +225,7 @@ export function useCancelLesson() {
 // Update lesson (add meeting link, notes, etc.)
 export function useUpdateLesson() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   return useMutation({
     mutationFn: async ({
@@ -234,6 +235,23 @@ export function useUpdateLesson() {
       lessonId: string;
       updates: Partial<Pick<Lesson, "meeting_link" | "notes" | "status">>;
     }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // First verify the user is involved in this lesson
+      const { data: lesson, error: fetchError } = await supabase
+        .from("lessons")
+        .select("teacher_id, student_id")
+        .eq("id", lessonId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!lesson) throw new Error("Lesson not found");
+
+      // Verify user is either the teacher or student
+      if (lesson.teacher_id !== user.id && lesson.student_id !== user.id) {
+        throw new Error("You don't have permission to update this lesson");
+      }
+
       const { data, error } = await supabase
         .from("lessons")
         .update({ ...updates, updated_at: new Date().toISOString() })

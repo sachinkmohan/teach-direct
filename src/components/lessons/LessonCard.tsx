@@ -78,10 +78,10 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
             </div>
 
             <p className="text-sm text-slate-600">
-              {otherPersonLabel}: <span className="font-medium">{otherPerson?.display_name || otherPerson?.email}</span>
+              {otherPersonLabel}: <span className="font-medium">{otherPerson?.display_name || otherPerson?.email || 'Unknown'}</span>
             </p>
 
-            {lesson.meeting_link && (
+            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && (
               <p className="text-sm">
                 <span className="text-slate-600">Meeting: </span>
                 <a
@@ -127,7 +127,7 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
-            {lesson.meeting_link && isUpcoming && lesson.status === 'scheduled' && (
+            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && isUpcoming && lesson.status === 'scheduled' && (
               <Button
                 onClick={() => onJoin?.(lesson.meeting_link!)}
                 className="w-full md:w-auto"

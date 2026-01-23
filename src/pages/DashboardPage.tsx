@@ -364,7 +364,7 @@ export function DashboardPage() {
                       ${teacherProfile?.pending_balance?.toFixed(2)} pending
                     </p>
                   )}
-                  {(teacherProfile?.available_balance || 0) >= 10 && isStripeConnected && (
+                  {(teacherProfile?.available_balance || 0) >= 1 && isStripeConnected && (
                     <Button
                       onClick={() => setShowWithdrawModal(true)}
                       className="mt-4 w-full"
@@ -373,7 +373,7 @@ export function DashboardPage() {
                       Withdraw Funds
                     </Button>
                   )}
-                  {(teacherProfile?.available_balance || 0) >= 10 && !isStripeConnected && (
+                  {(teacherProfile?.available_balance || 0) >= 1 && !isStripeConnected && (
                     <p className="text-xs text-slate-500 mt-4">
                       Connect Stripe to withdraw earnings
                     </p>
@@ -550,6 +550,7 @@ export function DashboardPage() {
                 : transactions?.filter(t => t.type === 'purchase' || t.type === 'refund' || t.type === 'lesson_payment') || []
             }
             isLoading={transactionsLoading}
+            userRole={isTeacher ? 'teacher' : 'student'}
           />
         </div>
 

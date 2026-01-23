@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const MIN_WITHDRAWAL_AMOUNT = 10;
+const MIN_WITHDRAWAL_AMOUNT = 1;
 
 serve(async (req) => {
   // Handle CORS

@@ -57,7 +57,8 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
       const scheduledAt = setMinutes(setHours(parsedDate, hours), minutes)
 
-      // TEMPORARILY DISABLED FOR TESTING - Check if the selected time is in the future
+      // NOTE: Past date validation is disabled to allow testing with historical dates
+      // In production, uncomment this to prevent booking lessons in the past:
       // if (isBefore(scheduledAt, new Date())) {
       //   setError('Please select a future date and time')
       //   return

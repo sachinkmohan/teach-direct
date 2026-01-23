@@ -10,7 +10,7 @@ interface WithdrawModalProps {
   isLoading?: boolean
 }
 
-const MIN_WITHDRAWAL_AMOUNT = 10
+const MIN_WITHDRAWAL_AMOUNT = 1
 
 export function WithdrawModal({ availableBalance, onSubmit, onCancel, isLoading }: WithdrawModalProps) {
   const [amount, setAmount] = useState('')
@@ -45,8 +45,8 @@ export function WithdrawModal({ availableBalance, onSubmit, onCancel, isLoading 
   }
 
   const handleMaxClick = () => {
-    // Round down to 2 decimal places
-    setAmount(Math.floor(availableBalance * 100) / 100 + '')
+    // Round down to 2 decimal places to avoid floating point precision issues
+    setAmount((Math.floor(availableBalance * 100) / 100).toFixed(2))
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
