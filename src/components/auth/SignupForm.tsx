@@ -11,9 +11,7 @@ import { useAuthStore } from '@/stores/authStore'
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['student', 'teacher'], {
-    errorMap: () => ({ message: 'Please select a role' }),
-  }),
+  role: z.enum(['student', 'teacher']),
 })
 
 type SignupFormData = z.infer<typeof signupSchema>

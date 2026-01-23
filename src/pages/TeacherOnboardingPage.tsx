@@ -15,12 +15,33 @@ const teacherProfileSchema = z.object({
   bio: z.string().min(50, 'Bio must be at least 50 characters'),
   subjects: z.string().min(1, 'Enter at least one subject'),
   languages: z.string().min(1, 'Enter at least one language'),
-  hourly_rate: z.coerce.number().min(5, 'Minimum rate is $5').max(500, 'Maximum rate is $500'),
-  package_5_rate: z.coerce.number().min(20, 'Minimum is $20').optional().or(z.literal('')),
-  package_10_rate: z.coerce.number().min(40, 'Minimum is $40').optional().or(z.literal('')),
+  hourly_rate: z.string().min(1, 'Hourly rate is required').transform((val) => {
+    const num = Number(val)
+    if (isNaN(num)) throw new Error('Must be a number')
+    if (num < 5) throw new Error('Minimum rate is $5')
+    if (num > 500) throw new Error('Maximum rate is $500')
+    return num
+  }),
+  package_5_rate: z.string().optional().transform((val) => {
+    if (!val || val === '') return undefined
+    const num = Number(val)
+    if (isNaN(num)) throw new Error('Must be a number')
+    if (num < 20) throw new Error('Minimum is $20')
+    return num
+  }),
+  package_10_rate: z.string().optional().transform((val) => {
+    if (!val || val === '') return undefined
+    const num = Number(val)
+    if (isNaN(num)) throw new Error('Must be a number')
+    if (num < 40) throw new Error('Minimum is $40')
+    return num
+  }),
 })
 
-type TeacherProfileFormData = z.infer<typeof teacherProfileSchema>
+// Input type for form fields (what the form sees)
+type TeacherProfileFormInput = z.input<typeof teacherProfileSchema>
+// Output type after validation (what onSubmit receives)
+type TeacherProfileFormData = z.output<typeof teacherProfileSchema>
 
 export function TeacherOnboardingPage() {
   const navigate = useNavigate()
@@ -34,7 +55,7 @@ export function TeacherOnboardingPage() {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<TeacherProfileFormData>({
+  } = useForm<TeacherProfileFormInput, unknown, TeacherProfileFormData>({
     resolver: zodResolver(teacherProfileSchema),
   })
 
@@ -45,9 +66,9 @@ export function TeacherOnboardingPage() {
         bio: teacherProfile.bio || '',
         subjects: teacherProfile.subjects?.join(', ') || '',
         languages: teacherProfile.languages?.join(', ') || '',
-        hourly_rate: teacherProfile.hourly_rate || undefined,
-        package_5_rate: teacherProfile.package_5_rate || undefined,
-        package_10_rate: teacherProfile.package_10_rate || undefined,
+        hourly_rate: teacherProfile.hourly_rate?.toString() || '',
+        package_5_rate: teacherProfile.package_5_rate?.toString() || '',
+        package_10_rate: teacherProfile.package_10_rate?.toString() || '',
       })
     }
   }, [teacherProfile, userProfile, reset])
@@ -81,8 +102,8 @@ export function TeacherOnboardingPage() {
           subjects,
           languages,
           hourly_rate: data.hourly_rate,
-          package_5_rate: data.package_5_rate ? Number(data.package_5_rate) : null,
-          package_10_rate: data.package_10_rate ? Number(data.package_10_rate) : null,
+          package_5_rate: data.package_5_rate ?? null,
+          package_10_rate: data.package_10_rate ?? null,
           stripe_connect_status: 'pending',
           available_balance: 0,
           pending_balance: 0,

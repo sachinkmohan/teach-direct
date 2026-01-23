@@ -11,6 +11,7 @@ import {
   TeachersPage,
   TeacherDetailPage,
   TeacherOnboardingPage,
+  LessonsPage,
 } from "@/pages"
 import { useAuthStore } from "@/stores/authStore"
 
@@ -51,6 +52,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <TeacherOnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lessons"
+          element={
+            <ProtectedRoute>
+              <LessonsPage />
             </ProtectedRoute>
           }
         />

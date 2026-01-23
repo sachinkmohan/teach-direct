@@ -5,8 +5,11 @@ import { useAuth } from "@/hooks/useAuth"
 import { useAuthStore } from "@/stores/authStore"
 import { useUserProfile } from "@/hooks/useUser"
 import { useTeacherProfile } from "@/hooks/useTeachers"
+import { useUpcomingLessons } from "@/hooks/useLessons"
+import { usePackages, type Package } from "@/hooks/usePackages"
+import { BookingModal } from "@/components/lessons/BookingModal"
 import { supabase } from "@/lib/supabase"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -15,7 +18,44 @@ export function DashboardPage() {
   const { logout } = useAuthStore()
   const { data: userProfile, isLoading: userLoading, error: userError } = useUserProfile()
   const { data: teacherProfile, isLoading: teacherLoading, error: teacherError, refetch: refetchTeacherProfile } = useTeacherProfile()
+  const { data: upcomingLessons } = useUpcomingLessons()
+  const { data: packages } = usePackages()
+  const activePackages = useMemo(
+    () => packages?.filter(p => p.status === 'active' && p.remaining_classes > 0) ?? [],
+    [packages]
+  )
   const [connectingStripe, setConnectingStripe] = useState(false)
+  const [bookingPackage, setBookingPackage] = useState<Package | null>(null)
+  const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
+
+  // Fetch teacher names for packages
+  useEffect(() => {
+    const fetchTeacherNames = async () => {
+      if (!packages || packages.length === 0) return
+
+      const teacherIds = [...new Set(packages.map(p => p.teacher_id))]
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .in('id', teacherIds)
+
+      if (error) {
+        console.error('Failed to fetch teacher names:', error)
+        return
+      }
+
+      if (data) {
+        const names: Record<string, string> = {}
+        data.forEach(u => {
+          names[u.id] = u.display_name || u.email
+        })
+        setTeacherNames(names)
+      } else {
+        console.warn('No teacher data returned')
+      }
+    }
+    fetchTeacherNames()
+  }, [packages])
   const [stripeMessage, setStripeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const isTeacher = userProfile?.role === 'teacher'
@@ -55,6 +95,18 @@ export function DashboardPage() {
       setConnectingStripe(false)
     }
   }
+
+  // Handle Escape key to close booking modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && bookingPackage) {
+        setBookingPackage(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [bookingPackage])
 
   // Handle Stripe Connect redirect
   useEffect(() => {
@@ -268,8 +320,19 @@ export function DashboardPage() {
                   <CardDescription>View scheduled lessons</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 mb-4">No upcoming lessons</p>
-                  <Button variant="outline" disabled>View Lessons</Button>
+                  {upcomingLessons && upcomingLessons.length > 0 ? (
+                    <>
+                      <p className="text-2xl font-bold text-slate-900 mb-1">
+                        {upcomingLessons.length}
+                      </p>
+                      <p className="text-slate-600 mb-4">upcoming lesson{upcomingLessons.length !== 1 ? 's' : ''}</p>
+                    </>
+                  ) : (
+                    <p className="text-slate-600 mb-4">No upcoming lessons</p>
+                  )}
+                  <Link to="/lessons">
+                    <Button variant="outline">View Lessons</Button>
+                  </Link>
                 </CardContent>
               </Card>
 
@@ -299,10 +362,24 @@ export function DashboardPage() {
                   <CardDescription>View and manage your lessons</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 mb-4">You have no upcoming lessons</p>
-                  <Link to="/teachers">
-                    <Button variant="outline">Browse Teachers</Button>
-                  </Link>
+                  {upcomingLessons && upcomingLessons.length > 0 ? (
+                    <>
+                      <p className="text-2xl font-bold text-slate-900 mb-1">
+                        {upcomingLessons.length}
+                      </p>
+                      <p className="text-slate-600 mb-4">upcoming lesson{upcomingLessons.length !== 1 ? 's' : ''}</p>
+                      <Link to="/lessons">
+                        <Button variant="outline">View Lessons</Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-slate-600 mb-4">You have no upcoming lessons</p>
+                      <Link to="/teachers">
+                        <Button variant="outline">Browse Teachers</Button>
+                      </Link>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -312,10 +389,42 @@ export function DashboardPage() {
                   <CardDescription>Manage your lesson packages</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 mb-4">No active packages</p>
-                  <Link to="/teachers">
-                    <Button variant="outline">Purchase Package</Button>
-                  </Link>
+                  {activePackages.length > 0 ? (
+                    <div className="space-y-3">
+                      {activePackages.map(pkg => (
+                          <div key={pkg.id} className="p-3 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-medium text-slate-900">
+                                  {teacherNames[pkg.teacher_id] || 'Teacher'}
+                                </p>
+                                <p className="text-sm text-slate-600">
+                                  {pkg.remaining_classes} of {pkg.total_classes} classes remaining
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => setBookingPackage(pkg)}
+                              >
+                                Book Lesson
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      <Link to="/teachers" className="block mt-4">
+                        <Button variant="outline" size="sm" className="w-full">
+                          Purchase More
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-slate-600 mb-4">No active packages</p>
+                      <Link to="/teachers">
+                        <Button variant="outline">Purchase Package</Button>
+                      </Link>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -359,6 +468,21 @@ export function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {bookingPackage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <BookingModal
+            package={bookingPackage}
+            teacherName={teacherNames[bookingPackage.teacher_id] || 'Teacher'}
+            onSuccess={() => {
+              setBookingPackage(null)
+              // Refresh will happen automatically via React Query invalidation
+            }}
+            onCancel={() => setBookingPackage(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }
