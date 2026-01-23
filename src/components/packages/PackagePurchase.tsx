@@ -65,7 +65,7 @@ export function PackagePurchase({
       }
 
       // Confirm payment with Stripe
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+      const { error: paymentError } = await stripe.confirmCardPayment(data.clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement)!,
         },
