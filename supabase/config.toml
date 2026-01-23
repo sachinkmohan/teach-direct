@@ -5,3 +5,6 @@ enabled = true
 
 [functions.stripe-connect-onboard]
 verify_jwt = false
+
+[functions.purchase-package]
+verify_jwt = false
