@@ -9,7 +9,7 @@ import { useUpcomingLessons } from "@/hooks/useLessons"
 import { usePackages, type Package } from "@/hooks/usePackages"
 import { BookingModal } from "@/components/lessons/BookingModal"
 import { supabase } from "@/lib/supabase"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -20,6 +20,10 @@ export function DashboardPage() {
   const { data: teacherProfile, isLoading: teacherLoading, error: teacherError, refetch: refetchTeacherProfile } = useTeacherProfile()
   const { data: upcomingLessons } = useUpcomingLessons()
   const { data: packages } = usePackages()
+  const activePackages = useMemo(
+    () => packages?.filter(p => p.status === 'active' && p.remaining_classes > 0) ?? [],
+    [packages]
+  )
   const [connectingStripe, setConnectingStripe] = useState(false)
   const [bookingPackage, setBookingPackage] = useState<Package | null>(null)
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
@@ -30,10 +34,15 @@ export function DashboardPage() {
       if (!packages || packages.length === 0) return
 
       const teacherIds = [...new Set(packages.map(p => p.teacher_id))]
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('id, display_name, email')
         .in('id', teacherIds)
+
+      if (error) {
+        console.error('Failed to fetch teacher names:', error)
+        return
+      }
 
       if (data) {
         const names: Record<string, string> = {}
@@ -41,6 +50,8 @@ export function DashboardPage() {
           names[u.id] = u.display_name || u.email
         })
         setTeacherNames(names)
+      } else {
+        console.warn('No teacher data returned')
       }
     }
     fetchTeacherNames()
@@ -84,6 +95,18 @@ export function DashboardPage() {
       setConnectingStripe(false)
     }
   }
+
+  // Handle Escape key to close booking modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && bookingPackage) {
+        setBookingPackage(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [bookingPackage])
 
   // Handle Stripe Connect redirect
   useEffect(() => {
@@ -366,11 +389,9 @@ export function DashboardPage() {
                   <CardDescription>Manage your lesson packages</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {packages && packages.filter(p => p.status === 'active' && p.remaining_classes > 0).length > 0 ? (
+                  {activePackages.length > 0 ? (
                     <div className="space-y-3">
-                      {packages
-                        .filter(p => p.status === 'active' && p.remaining_classes > 0)
-                        .map(pkg => (
+                      {activePackages.map(pkg => (
                           <div key={pkg.id} className="p-3 bg-slate-50 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <div>

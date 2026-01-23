@@ -11,7 +11,9 @@ interface LessonCardProps {
   onJoin?: (meetingLink: string) => void
 }
 
-const statusColors = {
+type LessonStatus = 'scheduled' | 'completed' | 'pending_confirmation' | 'confirmed' | 'disputed' | 'cancelled'
+
+const statusColors: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
   completed: 'bg-gray-100 text-gray-800',
   pending_confirmation: 'bg-yellow-100 text-yellow-800',
@@ -20,7 +22,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-500',
 }
 
-const statusLabels = {
+const statusLabels: Record<LessonStatus, string> = {
   scheduled: 'Scheduled',
   completed: 'Completed',
   pending_confirmation: 'Pending Confirmation',
@@ -39,6 +41,11 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: L
   const otherPerson = userRole === 'student' ? lesson.teacher : lesson.student
   const otherPersonLabel = userRole === 'student' ? 'Teacher' : 'Student'
 
+  // Safe status access with fallback
+  const status = lesson.status as LessonStatus
+  const statusColor = statusColors[status] ?? 'bg-gray-100 text-gray-800'
+  const statusLabel = statusLabels[status] ?? status
+
   return (
     <Card className={lesson.status === 'cancelled' ? 'opacity-60' : ''}>
       <CardContent className="pt-6">
@@ -46,8 +53,8 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onJoin }: L
           {/* Lesson Info */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[lesson.status]}`}>
-                {statusLabels[lesson.status]}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                {statusLabel}
               </span>
               {isUpcoming && lesson.status === 'scheduled' && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">

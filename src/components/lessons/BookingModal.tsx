@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, addDays, setHours, setMinutes, isBefore } from 'date-fns'
+import { format, addDays, setHours, setMinutes, isBefore, parse } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,7 +54,8 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
 
     try {
       const [hours, minutes] = selectedTime.split(':').map(Number)
-      const scheduledAt = setMinutes(setHours(new Date(selectedDate), hours), minutes)
+      const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
+      const scheduledAt = setMinutes(setHours(parsedDate, hours), minutes)
 
       // Check if the selected time is in the future
       if (isBefore(scheduledAt, new Date())) {

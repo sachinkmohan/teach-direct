@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { format } from 'date-fns'
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz'
 
 // Get user's local timezone
@@ -90,14 +89,12 @@ export function useTimezone() {
 
   // Format just the time with timezone abbreviation
   const formatTimeWithTz = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    return `${format(dateObj, 'h:mm a')} ${timezoneAbbr}`
+    return `${formatInTimezone(date, userTimezone, 'h:mm a')} ${timezoneAbbr}`
   }
 
   // Format date and time with timezone
   const formatDateTimeWithTz = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    return `${format(dateObj, 'EEEE, MMMM d, yyyy')} at ${format(dateObj, 'h:mm a')} ${timezoneAbbr}`
+    return `${formatInTimezone(date, userTimezone, 'EEEE, MMMM d, yyyy')} at ${formatInTimezone(date, userTimezone, 'h:mm a')} ${timezoneAbbr}`
   }
 
   // Convert a local date/time to UTC for storage

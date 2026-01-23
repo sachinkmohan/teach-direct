@@ -41,10 +41,14 @@ async function fetchUserInfoForLessons(lessons: Lesson[]): Promise<LessonWithDet
   ])]
 
   // Fetch user info
-  const { data: users } = await supabase
+  const { data: users, error } = await supabase
     .from('users')
     .select('id, email, display_name')
     .in('id', userIds)
+
+  if (error) {
+    console.error('Failed to fetch user info for lessons:', error)
+  }
 
   // Create lookup map
   const userMap: Record<string, { id: string; email: string; display_name: string | null }> = {}
@@ -130,10 +134,10 @@ export function useBookLesson() {
     }) => {
       if (!user) throw new Error('Not authenticated')
 
-      // First, check if package has remaining classes
+      // Get package to verify ownership and get price
       const { data: pkg, error: pkgError } = await supabase
         .from('packages')
-        .select('*')
+        .select('student_id, price_per_class')
         .eq('id', packageId)
         .single()
 
@@ -141,68 +145,30 @@ export function useBookLesson() {
         throw new Error('Package not found')
       }
 
-      if (pkg.remaining_classes <= 0) {
-        throw new Error('No remaining classes in this package')
-      }
-
       if (pkg.student_id !== user.id) {
         throw new Error('This package does not belong to you')
       }
 
-      // Create the lesson
+      // Call atomic booking function
+      const { data, error } = await supabase.rpc('book_lesson_atomic', {
+        p_package_id: packageId,
+        p_teacher_id: teacherId,
+        p_student_id: user.id,
+        p_scheduled_at: scheduledAt.toISOString(),
+        p_meeting_link: meetingLink || null,
+        p_price_per_class: pkg.price_per_class,
+      })
+
+      if (error) throw error
+
+      // Fetch the created lesson
       const { data: lesson, error: lessonError } = await supabase
         .from('lessons')
-        .insert({
-          package_id: packageId,
-          teacher_id: teacherId,
-          student_id: user.id,
-          scheduled_at: scheduledAt.toISOString(),
-          meeting_link: meetingLink || null,
-          status: 'scheduled',
-        })
-        .select()
+        .select('*')
+        .eq('id', data)
         .single()
 
       if (lessonError) throw lessonError
-
-      // Deduct one class from the package
-      const { error: updateError } = await supabase
-        .from('packages')
-        .update({
-          remaining_classes: pkg.remaining_classes - 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', packageId)
-
-      if (updateError) {
-        // Rollback: delete the lesson if package update fails
-        await supabase.from('lessons').delete().eq('id', lesson.id)
-        throw new Error('Failed to update package')
-      }
-
-      // Update teacher's pending_balance
-      const { data: teacherProfile, error: teacherError } = await supabase
-        .from('teacher_profiles')
-        .select('pending_balance')
-        .eq('user_id', teacherId)
-        .single()
-
-      if (!teacherError && teacherProfile) {
-        const currentPending = teacherProfile.pending_balance || 0
-        const { error: balanceError } = await supabase
-          .from('teacher_profiles')
-          .update({
-            pending_balance: currentPending + pkg.price_per_class,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', teacherId)
-
-        if (balanceError) {
-          console.error('Failed to update teacher pending balance:', balanceError)
-          // Note: We don't rollback here as the lesson is already booked
-          // The balance can be reconciled later
-        }
-      }
 
       return lesson as Lesson
     },
@@ -221,60 +187,14 @@ export function useCancelLesson() {
 
   return useMutation({
     mutationFn: async (lessonId: string) => {
-      // Get the lesson first
-      const { data: lesson, error: lessonError } = await supabase
-        .from('lessons')
-        .select('*, package:package_id(*)')
-        .eq('id', lessonId)
-        .single()
+      // Call atomic cancel function
+      const { data, error } = await supabase.rpc('cancel_lesson_atomic', {
+        p_lesson_id: lessonId,
+      })
 
-      if (lessonError || !lesson) {
-        throw new Error('Lesson not found')
-      }
+      if (error) throw error
 
-      // Update lesson status to cancelled
-      const { error: updateError } = await supabase
-        .from('lessons')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-        .eq('id', lessonId)
-
-      if (updateError) throw updateError
-
-      // Refund the class back to the package
-      const { error: pkgError } = await supabase
-        .from('packages')
-        .update({
-          remaining_classes: lesson.package.remaining_classes + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', lesson.package_id)
-
-      if (pkgError) throw pkgError
-
-      // Reduce teacher's pending_balance
-      const { data: teacherProfile, error: teacherError } = await supabase
-        .from('teacher_profiles')
-        .select('pending_balance')
-        .eq('user_id', lesson.teacher_id)
-        .single()
-
-      if (!teacherError && teacherProfile) {
-        const currentPending = teacherProfile.pending_balance || 0
-        const newPending = Math.max(0, currentPending - lesson.package.price_per_class)
-        const { error: balanceError } = await supabase
-          .from('teacher_profiles')
-          .update({
-            pending_balance: newPending,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', lesson.teacher_id)
-
-        if (balanceError) {
-          console.error('Failed to update teacher pending balance:', balanceError)
-        }
-      }
-
-      return { success: true }
+      return { success: data }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lessons'] })

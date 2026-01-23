@@ -25,14 +25,14 @@ const teacherProfileSchema = z.object({
   package_5_rate: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined
     const num = Number(val)
-    if (isNaN(num)) return undefined
+    if (isNaN(num)) throw new Error('Must be a number')
     if (num < 20) throw new Error('Minimum is $20')
     return num
   }),
   package_10_rate: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined
     const num = Number(val)
-    if (isNaN(num)) return undefined
+    if (isNaN(num)) throw new Error('Must be a number')
     if (num < 40) throw new Error('Minimum is $40')
     return num
   }),
@@ -102,8 +102,8 @@ export function TeacherOnboardingPage() {
           subjects,
           languages,
           hourly_rate: data.hourly_rate,
-          package_5_rate: data.package_5_rate ? Number(data.package_5_rate) : null,
-          package_10_rate: data.package_10_rate ? Number(data.package_10_rate) : null,
+          package_5_rate: data.package_5_rate ?? null,
+          package_10_rate: data.package_10_rate ?? null,
           stripe_connect_status: 'pending',
           available_balance: 0,
           pending_balance: 0,

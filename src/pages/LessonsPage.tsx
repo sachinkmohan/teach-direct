@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { isPast, isFuture } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import { useTimezone } from '@/hooks/useTimezone'
 type TabType = 'upcoming' | 'past' | 'all'
 
 export function LessonsPage() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('upcoming')
   const { data: lessons, isLoading, error } = useLessons()
   const { data: userProfile } = useUserProfile()
@@ -26,7 +28,8 @@ export function LessonsPage() {
       return isFuture(scheduledDate) && lesson.status !== 'cancelled'
     }
     if (activeTab === 'past') {
-      return isPast(scheduledDate) || lesson.status === 'cancelled'
+      // Show past lessons by scheduled date, including cancelled ones if they're in the past
+      return isPast(scheduledDate)
     }
     return true // 'all' tab
   })
@@ -152,7 +155,7 @@ export function LessonsPage() {
               {userRole === 'student' && (
                 <Button
                   variant="outline"
-                  onClick={() => (window.location.href = '/teachers')}
+                  onClick={() => navigate('/teachers')}
                 >
                   Browse Teachers
                 </Button>
