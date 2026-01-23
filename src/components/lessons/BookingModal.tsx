@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, addDays, setHours, setMinutes, isBefore, parse } from 'date-fns'
+import { format, addDays, setHours, setMinutes, parse } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,9 +21,9 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
 
   const bookLesson = useBookLesson()
 
-  // Generate available dates (next 30 days)
-  const availableDates = Array.from({ length: 30 }, (_, i) => {
-    const date = addDays(new Date(), i + 1)
+  // Generate available dates (7 days ago + today + next 29 days = 37 total days for testing)
+  const availableDates = Array.from({ length: 37 }, (_, i) => {
+    const date = addDays(new Date(), i - 7) // Start from 7 days ago
     return format(date, 'yyyy-MM-dd')
   })
 
@@ -57,11 +57,11 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
       const scheduledAt = setMinutes(setHours(parsedDate, hours), minutes)
 
-      // Check if the selected time is in the future
-      if (isBefore(scheduledAt, new Date())) {
-        setError('Please select a future date and time')
-        return
-      }
+      // TEMPORARILY DISABLED FOR TESTING - Check if the selected time is in the future
+      // if (isBefore(scheduledAt, new Date())) {
+      //   setError('Please select a future date and time')
+      //   return
+      // }
 
       await bookLesson.mutateAsync({
         packageId: pkg.id,

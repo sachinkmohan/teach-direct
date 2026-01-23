@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { isPast, isFuture } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LessonCard } from '@/components/lessons/LessonCard'
-import { useLessons, useCancelLesson, useUpdateLesson } from '@/hooks/useLessons'
+import { DisputeModal } from '@/components/lessons/DisputeModal'
+import { useLessons, useCancelLesson, useCompleteLesson, useConfirmLesson, useDisputeLesson } from '@/hooks/useLessons'
 import { useUserProfile } from '@/hooks/useUser'
 import { useTimezone } from '@/hooks/useTimezone'
 
@@ -13,25 +14,48 @@ type TabType = 'upcoming' | 'past' | 'all'
 export function LessonsPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('upcoming')
+  const [disputeModalLessonId, setDisputeModalLessonId] = useState<string | null>(null)
   const { data: lessons, isLoading, error } = useLessons()
   const { data: userProfile } = useUserProfile()
   const cancelLesson = useCancelLesson()
-  const updateLesson = useUpdateLesson()
+  const completeLesson = useCompleteLesson()
+  const confirmLesson = useConfirmLesson()
+  const disputeLesson = useDisputeLesson()
   const { userTimezone, timezoneAbbr } = useTimezone()
 
   const userRole = userProfile?.role === 'teacher' ? 'teacher' : 'student'
+
+  // Handle Escape key to close dispute modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && disputeModalLessonId) {
+        setDisputeModalLessonId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [disputeModalLessonId])
 
   // Filter lessons based on active tab
   const filteredLessons = lessons?.filter((lesson) => {
     const scheduledDate = new Date(lesson.scheduled_at)
     if (activeTab === 'upcoming') {
-      return isFuture(scheduledDate) && lesson.status !== 'cancelled'
+      // Show upcoming scheduled lessons OR pending_confirmation lessons (need action)
+      return (isFuture(scheduledDate) && lesson.status !== 'cancelled') ||
+             lesson.status === 'pending_confirmation'
     }
     if (activeTab === 'past') {
-      // Show past lessons by scheduled date, including cancelled ones if they're in the past
-      return isPast(scheduledDate)
+      // Show past lessons by scheduled date, excluding pending_confirmation (those are in upcoming)
+      return isPast(scheduledDate) && lesson.status !== 'pending_confirmation'
     }
     return true // 'all' tab
+  }).sort((a, b) => {
+    // Sort pending_confirmation to the top for visibility
+    if (a.status === 'pending_confirmation' && b.status !== 'pending_confirmation') return -1
+    if (a.status !== 'pending_confirmation' && b.status === 'pending_confirmation') return 1
+    // Otherwise sort by scheduled date
+    return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
   })
 
   const handleCancel = async (lessonId: string) => {
@@ -47,14 +71,31 @@ export function LessonsPage() {
 
   const handleComplete = async (lessonId: string) => {
     try {
-      await updateLesson.mutateAsync({
-        lessonId,
-        updates: { status: 'pending_confirmation' },
-      })
+      await completeLesson.mutateAsync(lessonId)
     } catch (err) {
       console.error('Failed to mark lesson complete:', err)
-      alert('Failed to mark lesson as complete. Please try again.')
+      alert(err instanceof Error ? err.message : 'Failed to mark lesson as complete. Please try again.')
     }
+  }
+
+  const handleConfirm = async (lessonId: string) => {
+    if (window.confirm('Are you sure you want to confirm this lesson? Funds will be released to the teacher.')) {
+      try {
+        await confirmLesson.mutateAsync(lessonId)
+      } catch (err) {
+        console.error('Failed to confirm lesson:', err)
+        alert(err instanceof Error ? err.message : 'Failed to confirm lesson. Please try again.')
+      }
+    }
+  }
+
+  const handleDispute = (lessonId: string) => {
+    setDisputeModalLessonId(lessonId)
+  }
+
+  const handleDisputeSubmit = async (lessonId: string, reason: string) => {
+    await disputeLesson.mutateAsync({ lessonId, reason })
+    setDisputeModalLessonId(null)
   }
 
   const handleJoin = (meetingLink: string) => {
@@ -103,6 +144,36 @@ export function LessonsPage() {
           </p>
         </div>
 
+        {/* Pending Confirmation Alert for Students */}
+        {userRole === 'student' && lessons && lessons.filter(l => l.status === 'pending_confirmation').length > 0 && (
+          <Card className="mb-6 border-amber-300 bg-amber-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold">
+                  !
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-900">
+                    {lessons.filter(l => l.status === 'pending_confirmation').length} Lesson{lessons.filter(l => l.status === 'pending_confirmation').length !== 1 ? 's' : ''} Awaiting Confirmation
+                  </h3>
+                  <p className="text-amber-800 text-sm mt-1">
+                    Your teacher has marked {lessons.filter(l => l.status === 'pending_confirmation').length === 1 ? 'a lesson' : 'lessons'} as complete. Please review and confirm to release payment, or dispute if there was an issue.
+                  </p>
+                  {activeTab !== 'upcoming' && (
+                    <Button
+                      onClick={() => setActiveTab('upcoming')}
+                      size="sm"
+                      className="mt-3"
+                    >
+                      View Pending Lessons
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <Button
@@ -135,6 +206,8 @@ export function LessonsPage() {
                 userRole={userRole}
                 onCancel={handleCancel}
                 onComplete={handleComplete}
+                onConfirm={handleConfirm}
+                onDispute={handleDispute}
                 onJoin={handleJoin}
               />
             ))}
@@ -194,6 +267,18 @@ export function LessonsPage() {
           </div>
         )}
       </div>
+
+      {/* Dispute Modal */}
+      {disputeModalLessonId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <DisputeModal
+            lessonId={disputeModalLessonId}
+            onSubmit={handleDisputeSubmit}
+            onCancel={() => setDisputeModalLessonId(null)}
+            isLoading={disputeLesson.isPending}
+          />
+        </div>
+      )}
     </div>
   )
 }

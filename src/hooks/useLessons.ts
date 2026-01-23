@@ -250,3 +250,81 @@ export function useUpdateLesson() {
     },
   });
 }
+
+// Complete a lesson (teacher marks as done)
+export function useCompleteLesson() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async (lessonId: string) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.rpc("complete_lesson_atomic", {
+        p_lesson_id: lessonId,
+        p_teacher_id: user.id,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+    },
+  });
+}
+
+// Confirm a lesson (student confirms or auto-release triggers this)
+export function useConfirmLesson() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (lessonId: string) => {
+      const { data, error } = await supabase.rpc("release_lesson_funds", {
+        p_lesson_id: lessonId,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+// Dispute a lesson (student disputes)
+export function useDisputeLesson() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async ({
+      lessonId,
+      reason,
+    }: {
+      lessonId: string;
+      reason: string;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.rpc("dispute_lesson", {
+        p_lesson_id: lessonId,
+        p_student_id: user.id,
+        p_reason: reason,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+    },
+  });
+}
