@@ -1,0 +1,7 @@
+# Supabase configuration file
+
+[api]
+enabled = true
+
+[functions.stripe-connect-onboard]
+verify_jwt = false

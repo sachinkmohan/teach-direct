@@ -1,20 +1,26 @@
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
 import { useAuthStore } from "@/stores/authStore"
 import { useUserProfile } from "@/hooks/useUser"
 import { useTeacherProfile } from "@/hooks/useTeachers"
+import { supabase } from "@/lib/supabase"
+import { useState, useEffect } from "react"
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { logout } = useAuthStore()
   const { data: userProfile, isLoading: userLoading, error: userError } = useUserProfile()
-  const { data: teacherProfile, isLoading: teacherLoading, error: teacherError } = useTeacherProfile()
+  const { data: teacherProfile, isLoading: teacherLoading, error: teacherError, refetch: refetchTeacherProfile } = useTeacherProfile()
+  const [connectingStripe, setConnectingStripe] = useState(false)
+  const [stripeMessage, setStripeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const isTeacher = userProfile?.role === 'teacher'
   const hasCompletedProfile = teacherProfile?.hourly_rate != null
+  const isStripeConnected = teacherProfile?.stripe_connect_status === 'active'
 
   const handleLogout = async () => {
     try {
@@ -24,6 +30,66 @@ export function DashboardPage() {
       console.error("Logout error:", error)
     }
   }
+
+  const handleConnectStripe = async () => {
+    setConnectingStripe(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('stripe-connect-onboard')
+
+      if (error) {
+        throw new Error(error.message || 'Failed to create onboarding link')
+      }
+
+      if (!data?.url) {
+        throw new Error(data?.error || 'No onboarding URL returned')
+      }
+
+      // Redirect to Stripe onboarding
+      window.location.href = data.url
+    } catch (error) {
+      console.error('Stripe Connect error:', error)
+      setStripeMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to connect Stripe'
+      })
+      setConnectingStripe(false)
+    }
+  }
+
+  // Handle Stripe Connect redirect
+  useEffect(() => {
+    const stripeConnect = searchParams.get('stripe_connect')
+    if (stripeConnect === 'success') {
+      // Update stripe_connect_status to active
+      const updateStatus = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await supabase
+              .from('teacher_profiles')
+              .update({ stripe_connect_status: 'active' })
+              .eq('user_id', user.id)
+
+            // Refetch teacher profile to show updated status
+            await refetchTeacherProfile()
+
+            setStripeMessage({ type: 'success', text: 'Stripe account connected successfully!' })
+          }
+        } catch (error) {
+          console.error('Failed to update status:', error)
+        }
+      }
+      updateStatus()
+
+      // Remove query param
+      searchParams.delete('stripe_connect')
+      setSearchParams(searchParams)
+    } else if (stripeConnect === 'refresh' || stripeConnect === 'failed') {
+      setStripeMessage({ type: 'error', text: 'Stripe connection incomplete. Please try again.' })
+      searchParams.delete('stripe_connect')
+      setSearchParams(searchParams)
+    }
+  }, [searchParams, setSearchParams, refetchTeacherProfile])
 
   // Show errors if queries failed
   if (userError) {
@@ -87,6 +153,17 @@ export function DashboardPage() {
           </span>
         </div>
 
+        {/* Stripe Connect Message */}
+        {stripeMessage && (
+          <Card className={`mb-6 ${stripeMessage.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <CardContent className="pt-6">
+              <p className={stripeMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}>
+                {stripeMessage.text}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Teacher Profile Setup Banner */}
         {isTeacher && !hasCompletedProfile && (
           <Card className="mb-6 border-amber-200 bg-amber-50">
@@ -142,6 +219,45 @@ export function DashboardPage() {
                     <Link to="/teacher/onboarding">
                       <Button>Complete Setup</Button>
                     </Link>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stripe Connect</CardTitle>
+                  <CardDescription>Connect your bank account</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isStripeConnected ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                        <p className="text-sm text-slate-600">Connected</p>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-4">
+                        You can receive payments and withdraw earnings
+                      </p>
+                      <Button variant="outline" size="sm" onClick={handleConnectStripe}>
+                        Update Settings
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="h-2 w-2 bg-amber-500 rounded-full"></div>
+                        <p className="text-sm text-slate-600">Not connected</p>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-4">
+                        Connect Stripe to receive payments
+                      </p>
+                      <Button
+                        onClick={handleConnectStripe}
+                        disabled={connectingStripe}
+                      >
+                        {connectingStripe ? 'Connecting...' : 'Connect Stripe'}
+                      </Button>
+                    </>
                   )}
                 </CardContent>
               </Card>

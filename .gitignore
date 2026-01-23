@@ -31,3 +31,9 @@ dist-ssr
 
 # Sql
 *.sql
+
+# Temporary files
+temp
+
+# Unreviewed files
+unreviewed-docs
