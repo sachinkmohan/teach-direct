@@ -16,8 +16,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !stripeSecretKey) {
       return new Response(
         JSON.stringify({ error: "Missing environment configuration" }),
         {
@@ -55,6 +56,7 @@ serve(async (req) => {
           processed: 0,
           succeeded: 0,
           failed: 0,
+          transfersCreated: 0,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,12 +68,14 @@ serve(async (req) => {
 
     let succeeded = 0;
     let failed = 0;
-    const errors: Array<{ lessonId: string; error: string }> = [];
+    let transfersCreated = 0;
+    const errors: Array<{ lessonId: string; error: string; stage: string }> = [];
 
     // Process each lesson
     for (const lesson of lessons) {
       try {
-        const { error: rpcError } = await supabaseAdmin.rpc(
+        // Call the release_lesson_funds function - returns transfer details
+        const { data: releaseResult, error: rpcError } = await supabaseAdmin.rpc(
           "release_lesson_funds",
           { p_lesson_id: lesson.id },
         );
@@ -82,16 +86,66 @@ serve(async (req) => {
             rpcError,
           );
           failed++;
-          errors.push({ lessonId: lesson.id, error: rpcError.message });
-        } else {
-          console.log(`Successfully released funds for lesson ${lesson.id}`);
-          succeeded++;
+          errors.push({ lessonId: lesson.id, error: rpcError.message, stage: "database" });
+          continue;
         }
+
+        console.log(`Successfully released funds for lesson ${lesson.id}`);
+
+        // Get transfer details from the result
+        const transferDetails = releaseResult?.[0];
+
+        if (!transferDetails || !transferDetails.teacher_connect_id) {
+          console.error(`No transfer details for lesson ${lesson.id}:`, releaseResult);
+          succeeded++; // DB update succeeded
+          errors.push({ lessonId: lesson.id, error: "No transfer details returned", stage: "transfer_details" });
+          continue;
+        }
+
+        const { teacher_connect_id, transfer_amount, teacher_id } = transferDetails;
+
+        // Convert to cents for Stripe
+        const transferAmountCents = Math.round(transfer_amount * 100);
+
+        console.log(`Creating Stripe transfer for lesson ${lesson.id}:`, {
+          amount: transferAmountCents,
+          destination: teacher_connect_id,
+        });
+
+        // Create Stripe Transfer to teacher's connected account
+        const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${stripeSecretKey}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            amount: transferAmountCents.toString(),
+            currency: "eur",
+            destination: teacher_connect_id,
+            "metadata[lesson_id]": lesson.id,
+            "metadata[teacher_id]": teacher_id,
+            "metadata[type]": "auto_release",
+          }),
+        });
+
+        const transfer = await transferRes.json();
+
+        if (transfer.error) {
+          console.error(`Stripe transfer error for lesson ${lesson.id}:`, transfer.error);
+          succeeded++; // DB update succeeded, but transfer failed
+          errors.push({ lessonId: lesson.id, error: transfer.error.message, stage: "stripe_transfer" });
+          continue;
+        }
+
+        console.log(`Transfer created for lesson ${lesson.id}:`, transfer.id);
+        succeeded++;
+        transfersCreated++;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         console.error(`Error processing lesson ${lesson.id}:`, errorMessage);
         failed++;
-        errors.push({ lessonId: lesson.id, error: errorMessage });
+        errors.push({ lessonId: lesson.id, error: errorMessage, stage: "unknown" });
       }
     }
 
@@ -101,6 +155,7 @@ serve(async (req) => {
         processed: lessons.length,
         succeeded,
         failed,
+        transfersCreated,
         errors: errors.length > 0 ? errors : undefined,
       }),
       {

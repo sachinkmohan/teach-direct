@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.withdraw-funds]
 verify_jwt = false
+
+[functions.confirm-lesson]
+verify_jwt = false

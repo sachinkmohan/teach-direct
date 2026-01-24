@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
@@ -25,6 +26,7 @@ export function PackagePurchase({
 }: PackagePurchaseProps) {
   const stripe = useStripe()
   const elements = useElements()
+  const queryClient = useQueryClient()
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,11 +41,21 @@ export function PackagePurchase({
     setError(null)
 
     try {
+      // Get the current session to ensure we have a valid access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError || !session) {
+        throw new Error('Not authenticated - please log in again')
+      }
+
       // Create payment intent
       const { data, error: functionError } = await supabase.functions.invoke('purchase-package', {
         body: {
           teacherId,
           packageType,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       })
 
@@ -97,6 +109,10 @@ export function PackagePurchase({
         .update({ status: 'completed' })
         .eq('stripe_payment_intent_id', data.paymentIntentId)
 
+      // Invalidate queries to refresh the UI
+      await queryClient.invalidateQueries({ queryKey: ['packages'] })
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+
       // Success!
       onSuccess()
     } catch (err) {
@@ -126,11 +142,11 @@ export function PackagePurchase({
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Price per Class:</span>
-                <span className="text-sm font-medium">${(price / classes).toFixed(2)}</span>
+                <span className="text-sm font-medium">€{(price / classes).toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-medium">Total:</span>
-                <span className="font-bold text-lg">${price.toFixed(2)}</span>
+                <span className="font-bold text-lg">€{price.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -178,7 +194,7 @@ export function PackagePurchase({
               disabled={!stripe || processing}
               className="flex-1"
             >
-              {processing ? 'Processing...' : `Pay $${price.toFixed(2)}`}
+              {processing ? 'Processing...' : `Pay €${price.toFixed(2)}`}
             </Button>
           </div>
         </form>

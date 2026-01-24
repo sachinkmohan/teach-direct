@@ -129,17 +129,16 @@ serve(async (req) => {
       );
     }
 
-    // Calculate platform fee (10%)
-    const platformFeeAmount = Math.round(totalAmount * 100 * 0.10);
     const amountInCents = Math.round(totalAmount * 100);
 
     console.log("Creating payment intent:", {
       amount: amountInCents,
-      platformFee: platformFeeAmount,
       teacherConnectId: teacherProfile.stripe_connect_id,
     });
 
-    // Create Stripe Payment Intent with application fee
+    // Create Stripe Payment Intent - money goes to platform account
+    // Funds will be transferred to teacher's Connect account only after lesson confirmation
+    // Platform fee (10%) is deducted at that time, per lesson
     const paymentIntentRes = await fetch(
       "https://api.stripe.com/v1/payment_intents",
       {
@@ -150,14 +149,13 @@ serve(async (req) => {
         },
         body: new URLSearchParams({
           amount: amountInCents.toString(),
-          currency: "usd",
-          "application_fee_amount": platformFeeAmount.toString(),
-          "transfer_data[destination]": teacherProfile.stripe_connect_id,
+          currency: "eur",
           "metadata[student_id]": user.id,
           "metadata[teacher_id]": teacherId,
           "metadata[package_type]": packageType,
           "metadata[total_classes]": totalClasses.toString(),
           "metadata[price_per_class]": pricePerClass.toString(),
+          "metadata[teacher_connect_id]": teacherProfile.stripe_connect_id,
         }),
       },
     );

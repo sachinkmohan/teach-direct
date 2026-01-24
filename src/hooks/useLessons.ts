@@ -193,7 +193,7 @@ export function useBookLesson() {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
       queryClient.invalidateQueries({ queryKey: ["packages"] });
-      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
     },
   });
 }
@@ -217,7 +217,7 @@ export function useCancelLesson() {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
       queryClient.invalidateQueries({ queryKey: ["packages"] });
-      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
     },
   });
 }
@@ -289,28 +289,52 @@ export function useCompleteLesson() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
-      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
     },
   });
 }
 
-// Confirm a lesson (student confirms or auto-release triggers this)
+// Confirm a lesson (student confirms - triggers Stripe transfer to teacher)
 export function useConfirmLesson() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (lessonId: string) => {
-      const { data, error } = await supabase.rpc("release_lesson_funds", {
-        p_lesson_id: lessonId,
+      // Get the current session to ensure we have a valid access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error("Not authenticated - please log in again");
+      }
+
+      // Call the confirm-lesson Edge Function which handles:
+      // 1. Database update (release_lesson_funds)
+      // 2. Stripe transfer to teacher's Connect account (90% after 10% platform fee)
+      const { data, error } = await supabase.functions.invoke("confirm-lesson", {
+        body: { lessonId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      if (error) throw error;
-      return { success: data };
+      if (error) {
+        throw new Error(error.message || "Failed to confirm lesson");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return {
+        success: true,
+        transferId: data?.transferId,
+        amount: data?.amount,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
-      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
   });

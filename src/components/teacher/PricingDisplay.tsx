@@ -58,10 +58,10 @@ export function PricingDisplay({
             {pkg.rate ? (
               <>
                 <p className="text-3xl font-bold text-slate-900">
-                  ${pkg.rate.toFixed(2)}
+                  €{pkg.rate.toFixed(2)}
                 </p>
                 <p className="text-sm text-slate-500">
-                  ${pkg.perClass?.toFixed(2)} per class
+                  €{pkg.perClass?.toFixed(2)} per class
                 </p>
                 {showPurchaseButtons && onPurchase && (
                   <Button

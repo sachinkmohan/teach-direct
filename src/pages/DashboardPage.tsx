@@ -7,9 +7,8 @@ import { useUserProfile } from "@/hooks/useUser"
 import { useTeacherProfile } from "@/hooks/useTeachers"
 import { useUpcomingLessons } from "@/hooks/useLessons"
 import { usePackages, type Package } from "@/hooks/usePackages"
-import { useTransactions, useWithdraw } from "@/hooks/useTransactions"
+import { useTransactions, useMonthlyEarnings } from "@/hooks/useTransactions"
 import { BookingModal } from "@/components/lessons/BookingModal"
-import { WithdrawModal } from "@/components/wallet/WithdrawModal"
 import { TransactionHistory } from "@/components/wallet/TransactionHistory"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect, useMemo } from "react"
@@ -30,10 +29,9 @@ export function DashboardPage() {
   )
   const [connectingStripe, setConnectingStripe] = useState(false)
   const [bookingPackage, setBookingPackage] = useState<Package | null>(null)
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
   const { data: transactions, isLoading: transactionsLoading } = useTransactions()
-  const withdraw = useWithdraw()
+  const { data: monthlyEarnings } = useMonthlyEarnings()
 
   // Fetch teacher names for packages
   useEffect(() => {
@@ -81,7 +79,18 @@ export function DashboardPage() {
   const handleConnectStripe = async () => {
     setConnectingStripe(true)
     try {
-      const { data, error } = await supabase.functions.invoke('stripe-connect-onboard')
+      // Get the current session to ensure we have a valid access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError || !session) {
+        throw new Error('Not authenticated - please log in again')
+      }
+
+      const { data, error } = await supabase.functions.invoke('stripe-connect-onboard', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
 
       if (error) {
         throw new Error(error.message || 'Failed to create onboarding link')
@@ -108,18 +117,12 @@ export function DashboardPage() {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (bookingPackage) setBookingPackage(null)
-        if (showWithdrawModal) setShowWithdrawModal(false)
       }
     }
 
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [bookingPackage, showWithdrawModal])
-
-  const handleWithdraw = async (amount: number) => {
-    await withdraw.mutateAsync(amount)
-    setShowWithdrawModal(false)
-  }
+  }, [bookingPackage])
 
   // Handle Stripe Connect redirect
   useEffect(() => {
@@ -274,7 +277,7 @@ export function DashboardPage() {
                   {hasCompletedProfile ? (
                     <>
                       <p className="text-slate-600 mb-4">
-                        Rate: ${teacherProfile?.hourly_rate}/hr
+                        Rate: €{teacherProfile?.hourly_rate}/hr
                       </p>
                       <Link to="/teacher/onboarding">
                         <Button variant="outline">Edit Profile</Button>
@@ -352,30 +355,26 @@ export function DashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Earnings</CardTitle>
-                  <CardDescription>Track your earnings</CardDescription>
+                  <CardDescription>{monthlyEarnings?.month} {monthlyEarnings?.year}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-slate-900">
-                    ${(teacherProfile?.available_balance || 0).toFixed(2)}
+                    €{(monthlyEarnings?.amount || 0).toFixed(2)}
                   </p>
-                  <p className="text-sm text-slate-500">Available balance</p>
+                  <p className="text-sm text-slate-500">This month's earnings</p>
                   {(teacherProfile?.pending_balance || 0) > 0 && (
                     <p className="text-sm text-amber-600 mt-1">
-                      ${teacherProfile?.pending_balance?.toFixed(2)} pending
+                      €{teacherProfile?.pending_balance?.toFixed(2)} pending confirmation
                     </p>
                   )}
-                  {(teacherProfile?.available_balance || 0) >= 1 && isStripeConnected && (
-                    <Button
-                      onClick={() => setShowWithdrawModal(true)}
-                      className="mt-4 w-full"
-                      size="sm"
-                    >
-                      Withdraw Funds
-                    </Button>
-                  )}
-                  {(teacherProfile?.available_balance || 0) >= 1 && !isStripeConnected && (
+                  {isStripeConnected && (
                     <p className="text-xs text-slate-500 mt-4">
-                      Connect Stripe to withdraw earnings
+                      Earnings are automatically deposited to your Stripe account
+                    </p>
+                  )}
+                  {!isStripeConnected && (
+                    <p className="text-xs text-amber-600 mt-4">
+                      Connect Stripe to receive earnings
                     </p>
                   )}
                 </CardContent>
@@ -464,11 +463,11 @@ export function DashboardPage() {
                               </div>
                               <div>
                                 <p className="text-slate-500 text-xs">Price per Class</p>
-                                <p className="font-medium text-slate-900">${pkg.price_per_class.toFixed(2)}</p>
+                                <p className="font-medium text-slate-900">€{pkg.price_per_class.toFixed(2)}</p>
                               </div>
                               <div>
                                 <p className="text-slate-500 text-xs">Total Paid</p>
-                                <p className="font-medium text-slate-900">${pkg.total_amount.toFixed(2)}</p>
+                                <p className="font-medium text-slate-900">€{pkg.total_amount.toFixed(2)}</p>
                               </div>
                               <div>
                                 <p className="text-slate-500 text-xs">Status</p>
@@ -504,14 +503,14 @@ export function DashboardPage() {
                   <div className="space-y-4">
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        ${transactions?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                        €{transactions?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
                       </p>
                       <p className="text-sm text-slate-500">Total Packages Purchased</p>
                     </div>
 
                     <div className="pt-3 border-t">
                       <p className="text-lg font-semibold text-slate-900">
-                        ${transactions?.filter(t => t.type === 'lesson_payment').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                        €{transactions?.filter(t => t.type === 'lesson_payment').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
                       </p>
                       <p className="text-sm text-slate-500">Lessons Confirmed (Paid Out)</p>
                     </div>
@@ -527,7 +526,7 @@ export function DashboardPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-semibold text-slate-900">
-                              ${activePackages.reduce((sum, pkg) => sum + (pkg.remaining_classes * pkg.price_per_class), 0).toFixed(2)}
+                              €{activePackages.reduce((sum, pkg) => sum + (pkg.remaining_classes * pkg.price_per_class), 0).toFixed(2)}
                             </p>
                             <p className="text-sm text-slate-500">Remaining Value</p>
                           </div>
@@ -546,7 +545,7 @@ export function DashboardPage() {
           <TransactionHistory
             transactions={
               isTeacher
-                ? transactions?.filter(t => t.type === 'lesson_payment' || t.type === 'withdrawal') || []
+                ? transactions?.filter(t => t.type === 'lesson_payment') || []
                 : transactions?.filter(t => t.type === 'purchase' || t.type === 'refund' || t.type === 'lesson_payment') || []
             }
             isLoading={transactionsLoading}
@@ -596,17 +595,6 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Withdraw Modal */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <WithdrawModal
-            availableBalance={teacherProfile?.available_balance || 0}
-            onSubmit={handleWithdraw}
-            onCancel={() => setShowWithdrawModal(false)}
-            isLoading={withdraw.isPending}
-          />
-        </div>
-      )}
     </div>
   )
 }
