@@ -7,6 +7,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
+// Constant-time comparison to prevent timing attacks
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 // Verify Stripe webhook signature using Web Crypto API
 async function verifyStripeSignature(
   payload: string,
@@ -49,7 +62,7 @@ async function verifyStripeSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return expectedSignature === receivedSignature;
+  return timingSafeEqual(expectedSignature, receivedSignature);
 }
 
 serve(async (req) => {
@@ -106,7 +119,7 @@ serve(async (req) => {
       .from("webhook_events")
       .select("id")
       .eq("stripe_event_id", event.id)
-      .single();
+      .maybeSingle();
 
     if (existingEvent) {
       console.log("Event already processed:", event.id);
@@ -149,15 +162,32 @@ serve(async (req) => {
             .from("packages")
             .select("id")
             .eq("stripe_payment_intent_id", paymentIntent.id)
-            .single();
+            .maybeSingle();
 
           if (!existingPackage) {
+            // Parse and validate metadata values
             const totalClasses = metadata.total_classes
-              ? parseInt(metadata.total_classes)
+              ? parseInt(metadata.total_classes, 10)
               : 1;
             const pricePerClass = metadata.price_per_class
               ? parseFloat(metadata.price_per_class)
               : paymentIntent.amount / 100 / totalClasses;
+
+            // Validate parsed numbers
+            if (isNaN(totalClasses) || totalClasses <= 0) {
+              console.error(
+                "Invalid total_classes metadata:",
+                metadata.total_classes
+              );
+              break;
+            }
+            if (isNaN(pricePerClass) || pricePerClass <= 0) {
+              console.error(
+                "Invalid price_per_class metadata:",
+                metadata.price_per_class
+              );
+              break;
+            }
 
             const { error: packageError } = await supabaseAdmin
               .from("packages")
@@ -236,7 +266,7 @@ serve(async (req) => {
               .from("packages")
               .select("id, remaining_classes, total_classes")
               .eq("stripe_payment_intent_id", charge.payment_intent)
-              .single();
+              .maybeSingle();
 
             if (pkg) {
               const { error: updateError } = await supabaseAdmin
@@ -262,10 +292,18 @@ serve(async (req) => {
 
         // Find the associated transaction and flag it
         if (dispute.payment_intent) {
+          // First fetch the existing transaction to preserve metadata
+          const { data: existingTx } = await supabaseAdmin
+            .from("transactions")
+            .select("metadata")
+            .eq("stripe_payment_intent_id", dispute.payment_intent)
+            .maybeSingle();
+
           const { error } = await supabaseAdmin
             .from("transactions")
             .update({
               metadata: {
+                ...(existingTx?.metadata || {}),
                 dispute_id: dispute.id,
                 dispute_status: dispute.status,
                 dispute_reason: dispute.reason,
@@ -283,7 +321,7 @@ serve(async (req) => {
             .from("packages")
             .select("id")
             .eq("stripe_payment_intent_id", dispute.payment_intent)
-            .single();
+            .maybeSingle();
 
           if (pkg) {
             const { error: lessonError } = await supabaseAdmin
