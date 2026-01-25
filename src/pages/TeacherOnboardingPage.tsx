@@ -18,22 +18,22 @@ const teacherProfileSchema = z.object({
   hourly_rate: z.string().min(1, 'Hourly rate is required').transform((val) => {
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 5) throw new Error('Minimum rate is $5')
-    if (num > 500) throw new Error('Maximum rate is $500')
+    if (num < 5) throw new Error('Minimum rate is €5')
+    if (num > 500) throw new Error('Maximum rate is €500')
     return num
   }),
   package_5_rate: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 20) throw new Error('Minimum is $20')
+    if (num < 20) throw new Error('Minimum is €20')
     return num
   }),
   package_10_rate: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 40) throw new Error('Minimum is $40')
+    if (num < 40) throw new Error('Minimum is €40')
     return num
   }),
 })
@@ -223,7 +223,7 @@ export function TeacherOnboardingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="hourly_rate" className="text-sm font-medium text-slate-700">
-                      Hourly Rate ($) *
+                      Hourly Rate (€) *
                     </label>
                     <Input
                       id="hourly_rate"
@@ -239,7 +239,7 @@ export function TeacherOnboardingPage() {
 
                   <div className="space-y-2">
                     <label htmlFor="package_5_rate" className="text-sm font-medium text-slate-700">
-                      5-Class Package ($)
+                      5-Class Package (€)
                     </label>
                     <Input
                       id="package_5_rate"
@@ -255,7 +255,7 @@ export function TeacherOnboardingPage() {
 
                   <div className="space-y-2">
                     <label htmlFor="package_10_rate" className="text-sm font-medium text-slate-700">
-                      10-Class Package ($)
+                      10-Class Package (€)
                     </label>
                     <Input
                       id="package_10_rate"

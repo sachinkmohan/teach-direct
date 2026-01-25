@@ -52,17 +52,14 @@ serve(async (req) => {
     } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Parse request body
-    const { teacherId, packageType } = await req.json();
+    const { teacherId, packageType, idempotencyKey } = await req.json();
 
     if (!teacherId || !packageType) {
       return new Response(
@@ -74,6 +71,19 @@ serve(async (req) => {
       );
     }
 
+    // Require idempotency key for payment operations
+    if (!idempotencyKey) {
+      return new Response(
+        JSON.stringify({
+          error: "idempotencyKey is required for payment operations",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+    const stripeIdempotencyKey = idempotencyKey;
     // Get teacher profile
     const { data: teacherProfile, error: profileError } = await supabaseAdmin
       .from("teacher_profiles")
@@ -82,13 +92,10 @@ serve(async (req) => {
       .single();
 
     if (profileError || !teacherProfile) {
-      return new Response(
-        JSON.stringify({ error: "Teacher not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Teacher not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if teacher has Stripe Connect
@@ -120,26 +127,22 @@ serve(async (req) => {
       pricePerClass = teacherProfile.package_10_rate / 10;
       totalAmount = teacherProfile.package_10_rate;
     } else {
-      return new Response(
-        JSON.stringify({ error: "Invalid package type" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Invalid package type" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Calculate platform fee (10%)
-    const platformFeeAmount = Math.round(totalAmount * 100 * 0.10);
     const amountInCents = Math.round(totalAmount * 100);
 
     console.log("Creating payment intent:", {
       amount: amountInCents,
-      platformFee: platformFeeAmount,
       teacherConnectId: teacherProfile.stripe_connect_id,
     });
 
-    // Create Stripe Payment Intent with application fee
+    // Create Stripe Payment Intent - money goes to platform account
+    // Funds will be transferred to teacher's Connect account only after lesson confirmation
+    // Platform fee (10%) is deducted at that time, per lesson
     const paymentIntentRes = await fetch(
       "https://api.stripe.com/v1/payment_intents",
       {
@@ -147,17 +150,17 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${stripeSecretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": stripeIdempotencyKey,
         },
         body: new URLSearchParams({
           amount: amountInCents.toString(),
-          currency: "usd",
-          "application_fee_amount": platformFeeAmount.toString(),
-          "transfer_data[destination]": teacherProfile.stripe_connect_id,
+          currency: "eur",
           "metadata[student_id]": user.id,
           "metadata[teacher_id]": teacherId,
           "metadata[package_type]": packageType,
           "metadata[total_classes]": totalClasses.toString(),
           "metadata[price_per_class]": pricePerClass.toString(),
+          "metadata[teacher_connect_id]": teacherProfile.stripe_connect_id,
         }),
       },
     );
@@ -209,12 +212,9 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Unexpected error:", errorMessage, error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

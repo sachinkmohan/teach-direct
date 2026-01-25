@@ -1,15 +1,25 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 
 export interface Transaction {
   id: string;
   user_id: string;
-  type: "purchase" | "lesson_payment" | "withdrawal" | "refund";
+  type: "purchase" | "lesson_payment" | "refund";
   amount: number;
   status: "pending" | "completed" | "failed";
   stripe_payment_intent_id: string | null;
   metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface MonthlyEarning {
+  id: string;
+  teacher_id: string;
+  year: number;
+  month: number;
+  total_amount: number;
+  lesson_count: number;
   created_at: string;
 }
 
@@ -35,37 +45,63 @@ export function useTransactions() {
   });
 }
 
-// Withdraw funds
-export function useWithdraw() {
-  const queryClient = useQueryClient();
+// Fetch this month's earnings for teachers (calculated from transactions)
+export function useMonthlyEarnings() {
   const { user } = useAuthStore();
 
-  return useMutation({
-    mutationFn: async (amount: number) => {
+  return useQuery({
+    queryKey: ["monthly-earnings", user?.id],
+    queryFn: async () => {
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase.functions.invoke("withdraw-funds", {
-        body: { amount },
-      });
+      // Get current month's start and end dates in UTC
+      const now = new Date();
+      const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 
-      if (error) {
-        throw new Error(error.message || "Failed to withdraw funds");
-      }
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("user_id", user.id)
+        .eq("type", "lesson_payment")
+        .eq("status", "completed")
+        .gte("created_at", startOfMonth.toISOString())
+        .lte("created_at", endOfMonth.toISOString());
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (error) throw error;
 
-      return data as {
-        success: boolean;
-        transferId: string;
-        amount: number;
-        newBalance: number;
+      const totalEarnings = data?.reduce((sum, t) => sum + t.amount, 0) || 0;
+
+      return {
+        amount: totalEarnings,
+        month: now.toLocaleString("default", { month: "long" }),
+        year: now.getFullYear(),
       };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["teacherProfile"] });
+    enabled: !!user,
+  });
+}
+
+// Fetch earnings history from the monthly_earnings table
+export function useEarningsHistory() {
+  const { user } = useAuthStore();
+
+  return useQuery({
+    queryKey: ["earnings-history", user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("monthly_earnings")
+        .select("*")
+        .eq("teacher_id", user.id)
+        .order("year", { ascending: false })
+        .order("month", { ascending: false })
+        .limit(12); // Last 12 months
+
+      if (error) throw error;
+      return data as MonthlyEarning[];
     },
+    enabled: !!user,
   });
 }

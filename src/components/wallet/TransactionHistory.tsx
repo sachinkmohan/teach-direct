@@ -11,14 +11,12 @@ interface TransactionHistoryProps {
 const typeLabels: Record<Transaction['type'], string> = {
   purchase: 'Package Purchase',
   lesson_payment: 'Lesson Payment',
-  withdrawal: 'Withdrawal',
   refund: 'Refund',
 }
 
 const typeColors: Record<Transaction['type'], string> = {
   purchase: 'bg-blue-100 text-blue-800',
   lesson_payment: 'bg-green-100 text-green-800',
-  withdrawal: 'bg-purple-100 text-purple-800',
   refund: 'bg-amber-100 text-amber-800',
 }
 
@@ -30,9 +28,6 @@ const statusColors: Record<Transaction['status'], string> = {
 
 export function TransactionHistory({ transactions, isLoading, userRole }: TransactionHistoryProps) {
   const getTransactionSign = (transaction: Transaction) => {
-    // Withdrawals are always negative (money leaving)
-    if (transaction.type === 'withdrawal') return '-'
-
     // Refunds are always positive (money returning)
     if (transaction.type === 'refund') return '+'
 
@@ -103,7 +98,7 @@ export function TransactionHistory({ transactions, isLoading, userRole }: Transa
                 </span>
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {getTransactionSign(transaction)} $
+                    {getTransactionSign(transaction)} €
                     {transaction.amount.toFixed(2)}
                   </p>
                   <p className="text-xs text-slate-500">

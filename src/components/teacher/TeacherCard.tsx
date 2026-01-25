@@ -44,11 +44,11 @@ export function TeacherCard({ teacher }: TeacherCardProps) {
       <CardFooter className="flex items-center justify-between">
         <div>
           <p className="text-lg font-bold text-slate-900">
-            ${teacher.hourly_rate?.toFixed(2)}/hr
+            €{teacher.hourly_rate?.toFixed(2)}/hr
           </p>
           {teacher.package_5_rate && (
             <p className="text-xs text-slate-500">
-              5-class: ${teacher.package_5_rate?.toFixed(2)}
+              5-class: €{teacher.package_5_rate?.toFixed(2)}
             </p>
           )}
         </div>
