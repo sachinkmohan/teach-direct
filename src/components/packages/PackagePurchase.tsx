@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,12 @@ export function PackagePurchase({
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Generate a unique idempotency key for this purchase attempt
+  const idempotencyKey = useMemo(
+    () => `purchase-${crypto.randomUUID()}`,
+    [] // Empty deps means this is generated once per component mount
+  )
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -53,6 +59,7 @@ export function PackagePurchase({
         body: {
           teacherId,
           packageType,
+          idempotencyKey,
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,

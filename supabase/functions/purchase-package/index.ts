@@ -62,7 +62,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { teacherId, packageType } = await req.json();
+    const { teacherId, packageType, idempotencyKey } = await req.json();
 
     if (!teacherId || !packageType) {
       return new Response(
@@ -73,6 +73,9 @@ serve(async (req) => {
         },
       );
     }
+
+    // Validate or generate idempotency key
+    const stripeIdempotencyKey = idempotencyKey || `purchase-${user.id}-${teacherId}-${packageType}-${Date.now()}`;
 
     // Get teacher profile
     const { data: teacherProfile, error: profileError } = await supabaseAdmin
@@ -139,8 +142,6 @@ serve(async (req) => {
     // Create Stripe Payment Intent - money goes to platform account
     // Funds will be transferred to teacher's Connect account only after lesson confirmation
     // Platform fee (10%) is deducted at that time, per lesson
-    // Generate idempotency key to prevent duplicate payment intents on retries
-    const idempotencyKey = `package-purchase-${user.id}-${teacherId}-${packageType}-${Date.now()}`;
     const paymentIntentRes = await fetch(
       "https://api.stripe.com/v1/payment_intents",
       {
@@ -148,7 +149,7 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${stripeSecretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
-          "Idempotency-Key": idempotencyKey,
+          "Idempotency-Key": stripeIdempotencyKey,
         },
         body: new URLSearchParams({
           amount: amountInCents.toString(),

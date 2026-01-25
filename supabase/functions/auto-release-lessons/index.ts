@@ -118,6 +118,7 @@ serve(async (req) => {
           headers: {
             Authorization: `Bearer ${stripeSecretKey}`,
             "Content-Type": "application/x-www-form-urlencoded",
+            "Idempotency-Key": `auto-release-${lesson.id}`,
           },
           body: new URLSearchParams({
             amount: transferAmountCents.toString(),
