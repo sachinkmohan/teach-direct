@@ -132,6 +132,42 @@ serve(async (req) => {
       );
     }
 
+    // Record event BEFORE processing to prevent race conditions (optimistic locking)
+    const { error: insertError } = await supabaseAdmin
+      .from("webhook_events")
+      .insert({
+        stripe_event_id: event.id,
+        type: event.type,
+        metadata: {
+          object_id: event.data.object.id,
+          livemode: event.livemode,
+        },
+      });
+
+    if (insertError) {
+      // If insert fails due to unique constraint, event is being processed by another request
+      if (insertError.code === "23505") {
+        console.log("Event being processed by another request:", event.id);
+        return new Response(
+          JSON.stringify({ received: true, message: "Already processing" }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Other errors - fail and let Stripe retry
+      console.error("Failed to record webhook event:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to record event" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Process the event based on type
     switch (event.type) {
       // ===== Priority 1: Critical for Core Functionality =====
@@ -445,21 +481,8 @@ serve(async (req) => {
         console.log("Unhandled event type:", event.type);
     }
 
-    // Mark event as processed
-    const { error: insertError } = await supabaseAdmin
-      .from("webhook_events")
-      .insert({
-        stripe_event_id: event.id,
-        type: event.type,
-        metadata: {
-          object_id: event.data.object.id,
-          livemode: event.livemode,
-        },
-      });
-
-    if (insertError) {
-      console.error("Failed to record webhook event:", insertError);
-    }
+    // Event was already recorded before processing (for race condition prevention)
+    console.log("Event processed successfully:", event.id);
 
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
