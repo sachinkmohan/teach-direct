@@ -503,14 +503,14 @@ export function DashboardPage() {
                   <div className="space-y-4">
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        €{transactions?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                        €{(transactions?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.amount, 0) ?? 0).toFixed(2)}
                       </p>
                       <p className="text-sm text-slate-500">Total Packages Purchased</p>
                     </div>
 
                     <div className="pt-3 border-t">
                       <p className="text-lg font-semibold text-slate-900">
-                        €{transactions?.filter(t => t.type === 'lesson_payment').reduce((sum, t) => sum + t.amount, 0).toFixed(2) || '0.00'}
+                        €{(transactions?.filter(t => t.type === 'lesson_payment').reduce((sum, t) => sum + t.amount, 0) ?? 0).toFixed(2)}
                       </p>
                       <p className="text-sm text-slate-500">Lessons Confirmed (Paid Out)</p>
                     </div>

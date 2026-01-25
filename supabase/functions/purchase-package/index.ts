@@ -139,6 +139,8 @@ serve(async (req) => {
     // Create Stripe Payment Intent - money goes to platform account
     // Funds will be transferred to teacher's Connect account only after lesson confirmation
     // Platform fee (10%) is deducted at that time, per lesson
+    // Generate idempotency key to prevent duplicate payment intents on retries
+    const idempotencyKey = `package-purchase-${user.id}-${teacherId}-${packageType}-${Date.now()}`;
     const paymentIntentRes = await fetch(
       "https://api.stripe.com/v1/payment_intents",
       {
@@ -146,6 +148,7 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${stripeSecretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": idempotencyKey,
         },
         body: new URLSearchParams({
           amount: amountInCents.toString(),
