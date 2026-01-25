@@ -52,13 +52,10 @@ serve(async (req) => {
     } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Parse request body
@@ -74,9 +71,19 @@ serve(async (req) => {
       );
     }
 
-    // Validate or generate idempotency key
-    const stripeIdempotencyKey = idempotencyKey || `purchase-${user.id}-${teacherId}-${packageType}-${Date.now()}`;
-
+    // Require idempotency key for payment operations
+    if (!idempotencyKey) {
+      return new Response(
+        JSON.stringify({
+          error: "idempotencyKey is required for payment operations",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+    const stripeIdempotencyKey = idempotencyKey;
     // Get teacher profile
     const { data: teacherProfile, error: profileError } = await supabaseAdmin
       .from("teacher_profiles")
@@ -85,13 +92,10 @@ serve(async (req) => {
       .single();
 
     if (profileError || !teacherProfile) {
-      return new Response(
-        JSON.stringify({ error: "Teacher not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Teacher not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if teacher has Stripe Connect
@@ -123,13 +127,10 @@ serve(async (req) => {
       pricePerClass = teacherProfile.package_10_rate / 10;
       totalAmount = teacherProfile.package_10_rate;
     } else {
-      return new Response(
-        JSON.stringify({ error: "Invalid package type" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Invalid package type" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const amountInCents = Math.round(totalAmount * 100);
@@ -211,12 +212,9 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Unexpected error:", errorMessage, error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
