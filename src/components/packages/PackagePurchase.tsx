@@ -94,7 +94,8 @@ export function PackagePurchase({
         throw new Error(paymentError.message)
       }
 
-      // Create package record in database
+      // Create package record in database (webhook will also create it as backup)
+      // Include stripe_payment_intent_id for idempotency - webhook uses this to avoid duplicates
       const { error: packageError } = await supabase.from('packages').insert({
         student_id: (await supabase.auth.getUser()).data.user?.id,
         teacher_id: teacherId,
@@ -103,14 +104,20 @@ export function PackagePurchase({
         price_per_class: price / classes,
         total_amount: price,
         status: 'active',
+        stripe_payment_intent_id: data.paymentIntentId,
       })
 
       if (packageError) {
-        console.error('Failed to create package:', packageError)
-        throw new Error('Payment successful but failed to create package. Please contact support.')
+        // Check if error is due to unique constraint (webhook already created the package)
+        if (packageError.code === '23505') {
+          console.log('Package already created by webhook, continuing...')
+        } else {
+          console.error('Failed to create package:', packageError)
+          throw new Error('Payment successful but failed to create package. Please contact support.')
+        }
       }
 
-      // Update transaction status to completed
+      // Update transaction status to completed (webhook will also do this as backup)
       await supabase
         .from('transactions')
         .update({ status: 'completed' })

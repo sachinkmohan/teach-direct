@@ -44,6 +44,7 @@ export interface Package {
   price_per_class: number
   total_amount: number
   status: 'active' | 'completed' | 'expired' | 'refunded'
+  stripe_payment_intent_id: string | null
   created_at: string
   updated_at: string
 }
@@ -75,4 +76,12 @@ export interface Transaction {
 
 export interface TeacherWithProfile extends User {
   teacher_profile: TeacherProfile | null
+}
+
+export interface WebhookEvent {
+  id: string
+  stripe_event_id: string
+  type: string
+  processed_at: string
+  metadata: Record<string, unknown> | null
 }
