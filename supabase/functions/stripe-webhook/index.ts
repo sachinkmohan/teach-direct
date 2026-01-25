@@ -24,7 +24,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 async function verifyStripeSignature(
   payload: string,
   signature: string,
-  webhookSecret: string
+  webhookSecret: string,
 ): Promise<boolean> {
   const elements = signature.split(",");
   const timestamp = elements.find((e) => e.startsWith("t="))?.split("=")[1];
@@ -51,12 +51,12 @@ async function verifyStripeSignature(
     encoder.encode(webhookSecret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
   const signatureBytes = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(signedPayload)
+    encoder.encode(signedPayload),
   );
   const expectedSignature = Array.from(new Uint8Array(signatureBytes))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -83,7 +83,7 @@ serve(async (req) => {
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -128,7 +128,7 @@ serve(async (req) => {
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -138,6 +138,7 @@ serve(async (req) => {
       .insert({
         stripe_event_id: event.id,
         type: event.type,
+        status: "processing",
         metadata: {
           object_id: event.data.object.id,
           livemode: event.livemode,
@@ -153,19 +154,16 @@ serve(async (req) => {
           {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
       // Other errors - fail and let Stripe retry
       console.error("Failed to record webhook event:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to record event" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Failed to record event" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Process the event based on type
@@ -213,14 +211,14 @@ serve(async (req) => {
             if (isNaN(totalClasses) || totalClasses <= 0) {
               console.error(
                 "Invalid total_classes metadata:",
-                metadata.total_classes
+                metadata.total_classes,
               );
               break;
             }
             if (isNaN(pricePerClass) || pricePerClass <= 0) {
               console.error(
                 "Invalid price_per_class metadata:",
-                metadata.price_per_class
+                metadata.price_per_class,
               );
               break;
             }
@@ -243,13 +241,13 @@ serve(async (req) => {
             } else {
               console.log(
                 "Package created for payment intent:",
-                paymentIntent.id
+                paymentIntent.id,
               );
             }
           } else {
             console.log(
               "Package already exists for payment intent:",
-              paymentIntent.id
+              paymentIntent.id,
             );
           }
         }
@@ -401,12 +399,7 @@ serve(async (req) => {
         if (error) {
           console.error("Failed to update Connect status:", error);
         } else {
-          console.log(
-            "Updated Connect status for",
-            account.id,
-            "to",
-            status
-          );
+          console.log("Updated Connect status for", account.id, "to", status);
         }
         break;
       }
