@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,8 +17,25 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { login, error: authError } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Check for confirmation success
+  useEffect(() => {
+    if (searchParams.get('confirmed') === 'true') {
+      setSuccessMessage('Email confirmed successfully! You can now log in.')
+      // Clear the query param
+      searchParams.delete('confirmed')
+      setSearchParams(searchParams)
+    }
+    if (searchParams.get('error') === 'confirmation_failed') {
+      // This will be handled by authError
+      searchParams.delete('error')
+      setSearchParams(searchParams)
+    }
+  }, [searchParams, setSearchParams])
 
   const {
     register,
@@ -49,9 +66,25 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700 flex items-start gap-2">
+            <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{successMessage}</span>
+          </div>
+        )}
+
         {authError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            {authError}
+            {authError.toLowerCase().includes('email not confirmed') ? (
+              <div>
+                <p className="font-medium mb-1">Email not confirmed</p>
+                <p>Please check your inbox and click the confirmation link before logging in.</p>
+              </div>
+            ) : (
+              authError
+            )}
           </div>
         )}
 
