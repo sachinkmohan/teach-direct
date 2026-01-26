@@ -59,6 +59,11 @@ function AppRoutes() {
           } else {
             navigate('/dashboard')
           }
+        } else {
+          // No session returned - fallback redirect
+          console.error('Auth callback error: no session returned')
+          window.history.replaceState(null, '', window.location.pathname)
+          navigate('/login?error=confirmation_failed')
         }
       }
     }
