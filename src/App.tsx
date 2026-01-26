@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MainLayout } from "@/components/layout"
@@ -29,7 +29,6 @@ function AppRoutes() {
   const initialize = useAuthStore((state) => state.initialize)
   const navigate = useNavigate()
   const location = useLocation()
-  const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
     initialize()
@@ -62,7 +61,6 @@ function AppRoutes() {
           }
         }
       }
-      setAuthChecked(true)
     }
 
     handleAuthCallback()
