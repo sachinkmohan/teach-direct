@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MainLayout } from "@/components/layout"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
@@ -14,6 +14,7 @@ import {
   LessonsPage,
 } from "@/pages"
 import { useAuthStore } from "@/stores/authStore"
+import { supabase } from "@/lib/supabase"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,10 +27,49 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const initialize = useAuthStore((state) => state.initialize)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Handle email confirmation callback (tokens in URL hash)
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // Check if we have auth tokens in the URL hash (from email confirmation)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      const type = hashParams.get('type')
+
+      if (accessToken) {
+        // Let Supabase process the tokens
+        const { data, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('Auth callback error:', error)
+          navigate('/login?error=confirmation_failed')
+        } else if (data.session) {
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname)
+
+          // Redirect based on confirmation type
+          if (type === 'signup' || type === 'email') {
+            navigate('/login?confirmed=true')
+          } else {
+            navigate('/dashboard')
+          }
+        } else {
+          // No session returned - fallback redirect
+          console.error('Auth callback error: no session returned')
+          window.history.replaceState(null, '', window.location.pathname)
+          navigate('/login?error=confirmation_failed')
+        }
+      }
+    }
+
+    handleAuthCallback()
+  }, [navigate, location.hash])
 
   return (
     <Routes>
