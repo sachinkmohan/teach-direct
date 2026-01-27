@@ -117,16 +117,22 @@ CREATE OR REPLACE FUNCTION "public"."cancel_lesson_atomic"("p_lesson_id" "uuid")
 DECLARE
   v_package_id UUID;
   v_teacher_id UUID;
+  v_lesson_status TEXT;
   v_price_per_class DECIMAL;
 BEGIN
   -- Get lesson details and lock the row
-  SELECT package_id, teacher_id INTO v_package_id, v_teacher_id
+  SELECT package_id, teacher_id, status INTO v_package_id, v_teacher_id, v_lesson_status
   FROM public.lessons
   WHERE id = p_lesson_id
   FOR UPDATE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Lesson not found';
+  END IF;
+
+  -- Only allow cancellation of scheduled lessons
+  IF v_lesson_status != 'scheduled' THEN
+    RAISE EXCEPTION 'Can only cancel lessons with scheduled status';
   END IF;
 
   -- Get price per class from package
@@ -433,20 +439,29 @@ CREATE OR REPLACE FUNCTION "public"."update_monthly_earnings"() RETURNS "trigger
 DECLARE
   v_year INTEGER;
   v_month INTEGER;
+  v_is_teacher BOOLEAN;
 BEGIN
   -- Only process completed lesson_payment transactions
   IF NEW.type = 'lesson_payment' AND NEW.status = 'completed' THEN
-    v_year := EXTRACT(YEAR FROM NEW.created_at);
-    v_month := EXTRACT(MONTH FROM NEW.created_at);
+    -- Check if the user is a teacher (has a teacher profile)
+    SELECT EXISTS(
+      SELECT 1 FROM public.teacher_profiles WHERE user_id = NEW.user_id
+    ) INTO v_is_teacher;
 
-    -- Upsert the monthly earnings record
-    INSERT INTO monthly_earnings (teacher_id, year, month, total_amount, lesson_count)
-    VALUES (NEW.user_id, v_year, v_month, NEW.amount, 1)
-    ON CONFLICT (teacher_id, year, month)
-    DO UPDATE SET
-      total_amount = monthly_earnings.total_amount + EXCLUDED.total_amount,
-      lesson_count = monthly_earnings.lesson_count + 1,
-      updated_at = NOW();
+    -- Only record earnings for teachers, not students
+    IF v_is_teacher THEN
+      v_year := EXTRACT(YEAR FROM NEW.created_at);
+      v_month := EXTRACT(MONTH FROM NEW.created_at);
+
+      -- Upsert the monthly earnings record
+      INSERT INTO monthly_earnings (teacher_id, year, month, total_amount, lesson_count)
+      VALUES (NEW.user_id, v_year, v_month, NEW.amount, 1)
+      ON CONFLICT (teacher_id, year, month)
+      DO UPDATE SET
+        total_amount = monthly_earnings.total_amount + EXCLUDED.total_amount,
+        lesson_count = monthly_earnings.lesson_count + 1,
+        updated_at = NOW();
+    END IF;
   END IF;
 
   RETURN NEW;
@@ -1072,25 +1087,21 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."book_lesson_atomic"("p_package_id" "uuid", "p_teacher_id" "uuid", "p_student_id" "uuid", "p_scheduled_at" timestamp with time zone, "p_meeting_link" "text", "p_price_per_class" numeric) TO "anon";
 GRANT ALL ON FUNCTION "public"."book_lesson_atomic"("p_package_id" "uuid", "p_teacher_id" "uuid", "p_student_id" "uuid", "p_scheduled_at" timestamp with time zone, "p_meeting_link" "text", "p_price_per_class" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."book_lesson_atomic"("p_package_id" "uuid", "p_teacher_id" "uuid", "p_student_id" "uuid", "p_scheduled_at" timestamp with time zone, "p_meeting_link" "text", "p_price_per_class" numeric) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_lesson_atomic"("p_lesson_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."cancel_lesson_atomic"("p_lesson_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_lesson_atomic"("p_lesson_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."complete_lesson_atomic"("p_lesson_id" "uuid", "p_teacher_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."complete_lesson_atomic"("p_lesson_id" "uuid", "p_teacher_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."complete_lesson_atomic"("p_lesson_id" "uuid", "p_teacher_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."dispute_lesson"("p_lesson_id" "uuid", "p_student_id" "uuid", "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."dispute_lesson"("p_lesson_id" "uuid", "p_student_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."dispute_lesson"("p_lesson_id" "uuid", "p_student_id" "uuid", "p_reason" "text") TO "service_role";
 
@@ -1102,7 +1113,6 @@ GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."release_lesson_funds"("p_lesson_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."release_lesson_funds"("p_lesson_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."release_lesson_funds"("p_lesson_id" "uuid") TO "service_role";
 
