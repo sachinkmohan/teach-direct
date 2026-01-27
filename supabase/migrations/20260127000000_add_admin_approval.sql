@@ -126,7 +126,7 @@ BEGIN
   UPDATE public.teacher_profiles
   SET
     pending_balance = GREATEST(0, COALESCE(pending_balance, 0) - v_price_per_class),
-    available_balance = COALESCE(available_balance, 0) + v_teacher_amount,
+    available_balance = GREATEST(0, COALESCE(available_balance, 0) + v_teacher_amount),
     updated_at = NOW()
   WHERE user_id = v_teacher_id;
 

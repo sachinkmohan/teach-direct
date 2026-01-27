@@ -1,4 +1,5 @@
-import { format, isPast, isFuture } from 'date-fns'
+import { isPast, isFuture } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LessonWithDetails } from '@/hooks/useLessons'
@@ -7,6 +8,7 @@ import type { Lesson } from '@/types/database'
 interface LessonCardProps {
   lesson: LessonWithDetails
   userRole: 'student' | 'teacher'
+  userTimezone: string
   onCancel?: (lessonId: string) => void
   onComplete?: (lessonId: string) => void
   onConfirm?: (lessonId: string) => void
@@ -37,7 +39,7 @@ const statusLabels: Record<LessonStatus, string> = {
   cancelled: 'Cancelled',
 }
 
-export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, onDispute, onJoin, isConfirming = false }: LessonCardProps) {
+export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplete, onConfirm, onDispute, onJoin, isConfirming = false }: LessonCardProps) {
   const scheduledDate = new Date(lesson.scheduled_at)
   const isUpcoming = isFuture(scheduledDate)
   const isPastLesson = isPast(scheduledDate)
@@ -73,10 +75,10 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
 
             <div>
               <p className="font-semibold text-lg">
-                {format(scheduledDate, 'EEEE, MMMM d, yyyy')}
+                {formatInTimeZone(scheduledDate, userTimezone, 'EEEE, MMMM d, yyyy')}
               </p>
               <p className="text-slate-600">
-                {format(scheduledDate, 'h:mm a')} ({lesson.duration_minutes} minutes)
+                {formatInTimeZone(scheduledDate, userTimezone, 'h:mm a')} ({lesson.duration_minutes} minutes)
               </p>
             </div>
 
