@@ -7,7 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "ecmalayalam@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL");
+
+if (!ADMIN_EMAIL) {
+  throw new Error("ADMIN_EMAIL environment variable must be configured");
+}
 
 serve(async (req) => {
   // Handle CORS
@@ -85,6 +89,28 @@ serve(async (req) => {
     if (lessonIds.length === 0) {
       return new Response(
         JSON.stringify({ error: "Lesson ID(s) required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Validate batch size (max 50 lessons at once)
+    if (lessonIds.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "Cannot approve more than 50 lessons at once" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Validate lessonIds are strings
+    if (!Array.isArray(lessonIds) || !lessonIds.every(id => typeof id === "string")) {
+      return new Response(
+        JSON.stringify({ error: "Invalid lesson ID format" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -173,26 +199,65 @@ serve(async (req) => {
           destination: teacher_connect_id,
         });
 
-        // Create Stripe Transfer to teacher's connected account
-        const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${stripeSecretKey}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Idempotency-Key": `admin-approve-${lessonId}`,
-          },
-          body: new URLSearchParams({
-            amount: transferAmountCents.toString(),
-            currency: "eur",
-            destination: teacher_connect_id,
-            "metadata[lesson_id]": lessonId,
-            "metadata[teacher_id]": teacher_id,
-            "metadata[type]": "admin_approval",
-            "metadata[approved_by]": user.email || "admin",
-          }),
-        });
+        // Create Stripe Transfer to teacher's connected account with 30s timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-        const transfer = await transferRes.json();
+        let transfer;
+        try {
+          const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${stripeSecretKey}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Idempotency-Key": `admin-approve-${lessonId}`,
+            },
+            body: new URLSearchParams({
+              amount: transferAmountCents.toString(),
+              currency: "eur",
+              destination: teacher_connect_id,
+              "metadata[lesson_id]": lessonId,
+              "metadata[teacher_id]": teacher_id,
+              "metadata[type]": "admin_approval",
+              "metadata[approved_by]": user.email || "admin",
+            }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+          transfer = await transferRes.json();
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+
+          if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+            console.error(`Stripe transfer timeout for lesson ${lessonId}`);
+
+            // Revert the database changes since transfer timed out
+            const { error: revertError } = await supabaseAdmin.rpc(
+              "revert_admin_approval",
+              { p_lesson_id: lessonId }
+            );
+
+            if (revertError) {
+              console.error(`Failed to revert lesson ${lessonId}:`, revertError);
+              results.push({
+                lessonId,
+                success: false,
+                error: "Transfer timed out and revert failed. Manual intervention required.",
+              });
+            } else {
+              results.push({
+                lessonId,
+                success: false,
+                error: "Transfer timed out after 30s. Lesson reverted to awaiting approval.",
+              });
+            }
+            continue;
+          }
+
+          // Re-throw other fetch errors to be caught by outer catch
+          throw fetchErr;
+        }
 
         if (transfer.error) {
           console.error(

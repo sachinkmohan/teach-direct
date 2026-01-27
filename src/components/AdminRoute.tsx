@@ -1,7 +1,11 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'ecmalayalam@gmail.com'
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL
+
+if (!ADMIN_EMAIL) {
+  throw new Error('VITE_ADMIN_EMAIL environment variable must be configured')
+}
 
 interface AdminRouteProps {
   children: React.ReactNode

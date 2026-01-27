@@ -295,7 +295,7 @@ export function useCompleteLesson() {
   });
 }
 
-// Confirm a lesson (student confirms - triggers Stripe transfer to teacher)
+// Confirm a lesson (student confirms - moves to awaiting admin approval)
 export function useConfirmLesson() {
   const queryClient = useQueryClient();
 
@@ -308,9 +308,9 @@ export function useConfirmLesson() {
         throw new Error("Not authenticated - please log in again");
       }
 
-      // Call the confirm-lesson Edge Function which handles:
-      // 1. Database update (release_lesson_funds)
-      // 2. Stripe transfer to teacher's Connect account (90% after 10% platform fee)
+      // Call the confirm-lesson Edge Function which:
+      // - Moves lesson from pending_confirmation to awaiting_admin_approval
+      // - Admin must then approve for Stripe transfer to occur
       const { data, error } = await supabase.functions.invoke("confirm-lesson", {
         body: { lessonId },
         headers: {
@@ -328,8 +328,6 @@ export function useConfirmLesson() {
 
       return {
         success: true,
-        transferId: data?.transferId,
-        amount: data?.amount,
       };
     },
     onSuccess: () => {

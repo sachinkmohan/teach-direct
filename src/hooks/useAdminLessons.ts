@@ -56,16 +56,26 @@ export function useAdminLessons() {
       const packageIds = [...new Set(lessons.map((l) => l.package_id))];
 
       // Fetch user info
-      const { data: users } = await supabase
+      const { data: users, error: usersError } = await supabase
         .from("users")
         .select("id, email, display_name")
         .in("id", userIds);
 
+      if (usersError) {
+        console.error("Failed to fetch users for admin lessons:", usersError);
+        throw usersError;
+      }
+
       // Fetch package info for prices
-      const { data: packages } = await supabase
+      const { data: packages, error: packagesError } = await supabase
         .from("packages")
         .select("id, price_per_class")
         .in("id", packageIds);
+
+      if (packagesError) {
+        console.error("Failed to fetch packages for admin lessons:", packagesError);
+        throw packagesError;
+      }
 
       // Create lookup maps
       const userMap: Record<

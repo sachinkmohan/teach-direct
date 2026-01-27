@@ -31,7 +31,7 @@ WHERE NOT EXISTS (
   WHERE id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid
 );
 
--- Create a lesson in 'pending_confirmation' with auto_release_at 4 days ago
+-- Create a lesson in 'pending_confirmation' with auto_release_at 1 day ago
 INSERT INTO public.lessons (
   id,
   package_id,

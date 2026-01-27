@@ -193,7 +193,7 @@ END;
 $$;
 
 ALTER FUNCTION public.admin_approve_lesson(uuid) OWNER TO postgres;
-GRANT ALL ON FUNCTION public.admin_approve_lesson(uuid) TO authenticated;
+-- Only service_role can call this (edge function verifies admin email before calling)
 GRANT ALL ON FUNCTION public.admin_approve_lesson(uuid) TO service_role;
 
 -- 4. Create revert_admin_approval RPC
@@ -266,8 +266,8 @@ $$;
 ALTER FUNCTION public.revert_admin_approval(uuid) OWNER TO postgres;
 GRANT ALL ON FUNCTION public.revert_admin_approval(uuid) TO service_role;
 
--- 5. Modify complete_lesson_atomic to NOT set auto_release_at
--- Since we're removing auto-release functionality
+-- 5. Modify complete_lesson_atomic to set auto_release_at to 3 days
+-- Lessons auto-move to awaiting_admin_approval after 3 days if student doesn't confirm
 CREATE OR REPLACE FUNCTION public.complete_lesson_atomic(p_lesson_id uuid, p_teacher_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql

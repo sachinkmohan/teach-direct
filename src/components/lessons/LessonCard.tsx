@@ -2,6 +2,7 @@ import { format, isPast, isFuture } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LessonWithDetails } from '@/hooks/useLessons'
+import type { Lesson } from '@/types/database'
 
 interface LessonCardProps {
   lesson: LessonWithDetails
@@ -14,7 +15,7 @@ interface LessonCardProps {
   isConfirming?: boolean
 }
 
-type LessonStatus = 'scheduled' | 'completed' | 'pending_confirmation' | 'awaiting_admin_approval' | 'confirmed' | 'disputed' | 'cancelled'
+type LessonStatus = Lesson['status']
 
 const statusColors: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
