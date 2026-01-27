@@ -12,6 +12,20 @@ interface TeacherProfileViewProps {
   onPurchase?: (packageType: 'single' | '5' | '10', durationMinutes: number) => void
 }
 
+/**
+ * Render a teacher profile view with header, bio, and pricing controls.
+ *
+ * Shows teacher identity (name, email, subjects, languages), an about section, and pricing information.
+ * When lesson offerings are provided the component prefers offering-based rates and can render a duration selector;
+ * otherwise it falls back to legacy teacher rates (defaulting to a 30-minute duration).
+ *
+ * @param teacher - Teacher record (includes user info, bio, subjects, languages, and legacy rates)
+ * @param offerings - Optional list of lesson offerings that provide duration-specific rates; defaults to an empty array
+ * @param selectedDuration - Currently selected offering duration in minutes, or `null`/`undefined` when none is selected
+ * @param onDurationSelect - Optional callback invoked with a duration (minutes) when the user selects a different offering
+ * @param onPurchase - Optional callback invoked when a purchase action occurs; called with `(packageType, durationMinutes)`
+ * @returns A React element containing the teacher profile UI
+ */
 export function TeacherProfileView({
   teacher,
   offerings = [],

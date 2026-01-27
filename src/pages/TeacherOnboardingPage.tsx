@@ -25,6 +25,14 @@ type TeacherProfileFormInput = z.input<typeof teacherProfileSchema>
 // Output type after validation (what onSubmit receives)
 type TeacherProfileFormData = z.output<typeof teacherProfileSchema>
 
+/**
+ * Renders the teacher onboarding page where teachers set up their profile and manage duration-based lesson offerings.
+ *
+ * The page synchronizes existing profile and offering data into the form, enforces that at least one active offering exists
+ * before saving, and persists user and teacher profile updates (including legacy rate fields derived from the primary active offering).
+ *
+ * @returns A JSX element representing the onboarding page UI.
+ */
 export function TeacherOnboardingPage() {
   const navigate = useNavigate()
   const { data: userProfile, isLoading: userLoading } = useUserProfile()

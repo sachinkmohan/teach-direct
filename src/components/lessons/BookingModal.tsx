@@ -13,6 +13,15 @@ interface BookingModalProps {
   onCancel: () => void
 }
 
+/**
+ * Render a booking modal that lets a user select a date, time, and optional meeting link, then submit a lesson booking.
+ *
+ * @param package - Package object containing lesson metadata (e.g., `id`, `teacher_id`, `duration_minutes`, `remaining_classes`)
+ * @param teacherName - Display name of the teacher shown in the modal header
+ * @param onSuccess - Callback invoked after a successful booking
+ * @param onCancel - Callback invoked when the user cancels the booking flow
+ * @returns A React element containing the booking modal UI
+ */
 export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')

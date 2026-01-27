@@ -9,6 +9,15 @@ import { useAuth } from '@/hooks/useAuth'
 import { stripePromise } from '@/lib/stripe'
 import { PackagePurchase } from '@/components/packages/PackagePurchase'
 
+/**
+ * Render the teacher detail page, including profile, offering selection, and the purchase modal flow.
+ *
+ * The component fetches teacher data and offerings, manages duration selection and purchase state,
+ * and conditionally shows authentication prompts, loading/UI error states, and a Stripe-backed
+ * purchase modal that passes duration-aware pricing to the PackagePurchase flow.
+ *
+ * @returns The rendered teacher detail page as a JSX element.
+ */
 export function TeacherDetailPage() {
   const { teacherId } = useParams<{ teacherId: string }>()
   const { data: teacher, isLoading, error } = useTeacher(teacherId || '')

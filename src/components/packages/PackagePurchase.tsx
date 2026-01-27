@@ -16,6 +16,19 @@ interface PackagePurchaseProps {
   onCancel: () => void
 }
 
+/**
+ * Render a package purchase form and perform end-to-end payment processing with Stripe and Supabase.
+ *
+ * @param teacherId - ID of the teacher offering the package
+ * @param teacherName - Display name of the teacher
+ * @param packageType - Package identifier: 'single', 'package_5', or 'package_10'
+ * @param price - Total price for the package in euros
+ * @param classes - Total number of classes included in the package
+ * @param durationMinutes - Duration of each lesson in minutes
+ * @param onSuccess - Callback invoked after a successful purchase flow
+ * @param onCancel - Callback invoked when the user cancels the purchase
+ * @returns The JSX element rendering the purchase UI and handling the payment flow
+ */
 export function PackagePurchase({
   teacherId,
   teacherName,

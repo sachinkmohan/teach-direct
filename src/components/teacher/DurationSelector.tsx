@@ -6,6 +6,16 @@ interface DurationSelectorProps {
   onSelect: (duration: number) => void
 }
 
+/**
+ * Render a lesson-duration selector UI based on available offerings.
+ *
+ * Renders nothing if there are no offerings, a single-line duration display if exactly one offering exists, or a button group allowing selection when multiple offerings are provided.
+ *
+ * @param offerings - Available lesson offerings; each provides an `id` and `duration_minutes`
+ * @param selectedDuration - Currently selected duration in minutes, or `null` when none is selected
+ * @param onSelect - Callback invoked with the chosen duration in minutes when a duration button is clicked
+ * @returns A React element that renders the duration selector UI, or `null` if there are no offerings
+ */
 export function DurationSelector({
   offerings,
   selectedDuration,

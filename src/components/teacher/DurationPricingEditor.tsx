@@ -20,6 +20,18 @@ const DURATIONS: { value: 30 | 45 | 60; label: string }[] = [
   { value: 60, label: '60 minutes' },
 ]
 
+/**
+ * Render the UI for managing lesson durations and their pricing.
+ *
+ * @param offerings - Currently configured lesson offerings.
+ * @param onAdd - Called with a duration (30, 45, or 60) when the user adds a new offering.
+ * @param onUpdate - Called with an updated offering when the user saves edits to an offering's prices.
+ * @param onToggleActive - Called with an offering ID and the new active state when the user toggles activation.
+ * @param onRemove - Called with an offering ID when the user removes an offering.
+ * @param isLoading - When true, disables interactive controls to prevent concurrent actions.
+ * @param error - Optional error message to display above the offerings list.
+ * @returns A React element containing controls and cards for viewing, adding, editing, activating, and removing duration offerings.
+ */
 export function DurationPricingEditor({
   offerings,
   onAdd,
@@ -90,6 +102,14 @@ interface AddDurationDropdownProps {
   disabled?: boolean
 }
 
+/**
+ * Renders a dropdown button that lets the user choose and add a lesson duration.
+ *
+ * @param availableDurations - Array of available duration options to display; each item should include `value` (30 | 45 | 60) and `label`
+ * @param onAdd - Callback invoked with the selected duration value when a duration is chosen
+ * @param disabled - When true, disables the add button and prevents opening the dropdown
+ * @returns The Add Duration dropdown UI element
+ */
 function AddDurationDropdown({ availableDurations, onAdd, disabled }: AddDurationDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -137,6 +157,23 @@ interface DurationOfferingCardProps {
   isLoading?: boolean
 }
 
+/**
+ * Renders a card for a single lesson-duration offering with view, edit, activate, and remove controls.
+ *
+ * While editing, allows updating the single-class rate (required) and optional 5- and 10-class package rates.
+ * Saving parses numeric inputs and:
+ * - requires the single-class rate to be a number >= 1 (otherwise the save is aborted),
+ * - parses package rates to numbers and sets them to `null` when absent or less than 1.
+ * Calls `onUpdate` with the updated offering when a valid save occurs. Toggling the activation control calls `onToggleActive` with the offering id and the new active state. Clicking Remove calls `onRemove` with the offering id.
+ *
+ * @param offering - The lesson offering to render and edit.
+ * @param onUpdate - Callback invoked with the updated offering after a successful save.
+ * @param onToggleActive - Callback invoked with `(offeringId, isActive)` when activation is toggled.
+ * @param onRemove - Callback invoked with the offering id when the Remove action is triggered.
+ * @param canRemove - When true, the Remove action is shown.
+ * @param isLoading - When true, interactive controls are disabled to prevent concurrent actions.
+ * @returns The card element representing the duration offering.
+ */
 function DurationOfferingCard({
   offering,
   onUpdate,

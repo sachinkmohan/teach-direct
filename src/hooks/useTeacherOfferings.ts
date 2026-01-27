@@ -5,7 +5,12 @@ import type { TeacherLessonOffering } from '@/types/database'
 
 export type { TeacherLessonOffering }
 
-// Fetch active offerings for a specific teacher (for students viewing)
+/**
+ * Fetches active lesson offerings for the specified teacher, ordered by display order then duration.
+ *
+ * @param teacherId - The ID of the teacher whose active offerings to fetch
+ * @returns A React Query result whose `data` is an array of `TeacherLessonOffering` when successful
+ */
 export function useTeacherOfferings(teacherId: string) {
   return useQuery({
     queryKey: ['teacher-offerings', teacherId],
@@ -25,7 +30,11 @@ export function useTeacherOfferings(teacherId: string) {
   })
 }
 
-// Fetch current teacher's offerings (all, including inactive)
+/**
+ * Fetches all lesson offerings for the currently authenticated teacher, including inactive ones.
+ *
+ * @returns An array of `TeacherLessonOffering` for the authenticated user
+ */
 export function useMyTeacherOfferings() {
   const { user } = useAuthStore()
 
@@ -58,7 +67,15 @@ export interface OfferingInput {
   display_order?: number
 }
 
-// Mutation to create or update an offering
+/**
+ * Provides a mutation hook to create or update a teacher's lesson offering.
+ *
+ * The mutation upserts an offering scoped to the current authenticated teacher and, on success,
+ * invalidates cached queries for the teacher's offerings.
+ *
+ * @returns The mutation result whose `mutate`/`mutateAsync` accepts an `OfferingInput` and resolves to the upserted `TeacherLessonOffering`.
+ * @throws Error when there is no authenticated user or when the database operation fails.
+ */
 export function useUpsertOffering() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -94,7 +111,11 @@ export function useUpsertOffering() {
   })
 }
 
-// Mutation to toggle offering active status
+/**
+ * Toggle the active state of a teacher's lesson offering.
+ *
+ * @returns A React Query mutation hook that accepts variables `{ offeringId: string; isActive: boolean }`, updates the offering's `is_active` and `updated_at` for the current authenticated teacher, and resolves to the updated `TeacherLessonOffering`. On success, related offering queries are invalidated.
+ */
 export function useToggleOfferingActive() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -124,7 +145,16 @@ export function useToggleOfferingActive() {
   })
 }
 
-// Mutation to delete an offering
+/**
+ * Provide a mutation hook that deletes a teacher's offering by id.
+ *
+ * The mutation requires an authenticated user and removes the record from
+ * the `teacher_lesson_offerings` table where `id` equals the provided offering id
+ * and `teacher_id` equals the current user's id. On success, related query caches
+ * for the current teacher's offerings and public teacher offerings are invalidated.
+ *
+ * @returns A React Query mutation result for deleting an offering; call `mutate` or `mutateAsync` with the offering id to perform the deletion. The mutation will throw an error if the user is not authenticated or if the deletion fails.
+ */
 export function useDeleteOffering() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -148,7 +178,12 @@ export function useDeleteOffering() {
   })
 }
 
-// Mutation to update multiple offerings at once (for reordering)
+/**
+ * Updates the display order for multiple teacher lesson offerings.
+ *
+ * @param offerings - An array of objects each containing an `id` and the new `display_order` value.
+ * @returns Nothing.
+ */
 export function useUpdateOfferingsOrder() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
