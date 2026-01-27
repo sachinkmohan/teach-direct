@@ -1,18 +1,14 @@
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL
-
-if (!ADMIN_EMAIL) {
-  throw new Error('VITE_ADMIN_EMAIL environment variable must be configured')
-}
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 interface AdminRouteProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -22,16 +18,16 @@ export function AdminRoute({ children }: AdminRouteProps) {
           <p className="text-slate-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />;
   }
 
   if (user?.email !== ADMIN_EMAIL) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/dashboard" replace />;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
