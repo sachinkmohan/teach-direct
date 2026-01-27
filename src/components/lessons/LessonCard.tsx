@@ -1,4 +1,4 @@
-import { format, isPast, isFuture, formatDistanceToNow } from 'date-fns'
+import { format, isPast, isFuture } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LessonWithDetails } from '@/hooks/useLessons'
@@ -14,12 +14,13 @@ interface LessonCardProps {
   isConfirming?: boolean
 }
 
-type LessonStatus = 'scheduled' | 'completed' | 'pending_confirmation' | 'confirmed' | 'disputed' | 'cancelled'
+type LessonStatus = 'scheduled' | 'completed' | 'pending_confirmation' | 'awaiting_admin_approval' | 'confirmed' | 'disputed' | 'cancelled'
 
 const statusColors: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
   completed: 'bg-gray-100 text-gray-800',
   pending_confirmation: 'bg-yellow-100 text-yellow-800',
+  awaiting_admin_approval: 'bg-purple-100 text-purple-800',
   confirmed: 'bg-green-100 text-green-800',
   disputed: 'bg-red-100 text-red-800',
   cancelled: 'bg-gray-100 text-gray-500',
@@ -29,6 +30,7 @@ const statusLabels: Record<LessonStatus, string> = {
   scheduled: 'Scheduled',
   completed: 'Completed',
   pending_confirmation: 'Pending Confirmation',
+  awaiting_admin_approval: 'Awaiting Admin Approval',
   confirmed: 'Confirmed',
   disputed: 'Disputed',
   cancelled: 'Cancelled',
@@ -42,7 +44,6 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
   const canComplete = isPastLesson && lesson.status === 'scheduled' && userRole === 'teacher'
   const canConfirm = lesson.status === 'pending_confirmation' && userRole === 'student'
   const canDispute = lesson.status === 'pending_confirmation' && userRole === 'student'
-  const autoReleaseDate = lesson.auto_release_at ? new Date(lesson.auto_release_at) : null
 
   const otherPerson = userRole === 'student' ? lesson.teacher : lesson.student
   const otherPersonLabel = userRole === 'student' ? 'Teacher' : 'Student'
@@ -102,24 +103,27 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
               </p>
             )}
 
-            {/* Auto-release countdown for pending_confirmation */}
-            {lesson.status === 'pending_confirmation' && autoReleaseDate && (
+            {/* Status message for awaiting_admin_approval */}
+            {lesson.status === 'awaiting_admin_approval' && (
+              <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-sm">
+                <p className="text-purple-700">
+                  {userRole === 'student' ? (
+                    'Payment is pending admin approval.'
+                  ) : (
+                    'Student has approved. Awaiting admin approval for payment.'
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Status message for pending_confirmation */}
+            {lesson.status === 'pending_confirmation' && (
               <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
                 <p className="text-amber-700">
                   {userRole === 'student' ? (
-                    <>
-                      Funds will be automatically released to teacher{' '}
-                      <span className="font-medium">
-                        {formatDistanceToNow(autoReleaseDate, { addSuffix: true })}
-                      </span>
-                    </>
+                    'Please confirm that this lesson was completed.'
                   ) : (
-                    <>
-                      Awaiting student confirmation. Auto-release{' '}
-                      <span className="font-medium">
-                        {formatDistanceToNow(autoReleaseDate, { addSuffix: true })}
-                      </span>
-                    </>
+                    'Awaiting student confirmation.'
                   )}
                 </p>
               </div>

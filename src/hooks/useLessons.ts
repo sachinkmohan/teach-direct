@@ -14,6 +14,7 @@ export interface Lesson {
     | "scheduled"
     | "completed"
     | "pending_confirmation"
+    | "awaiting_admin_approval"
     | "confirmed"
     | "disputed"
     | "cancelled";

@@ -12,7 +12,9 @@ import {
   TeacherDetailPage,
   TeacherOnboardingPage,
   LessonsPage,
+  AdminDashboardPage,
 } from "@/pages"
+import { AdminRoute } from "@/components/AdminRoute"
 import { useAuthStore } from "@/stores/authStore"
 import { supabase } from "@/lib/supabase"
 
@@ -101,6 +103,14 @@ function AppRoutes() {
             <ProtectedRoute>
               <LessonsPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
