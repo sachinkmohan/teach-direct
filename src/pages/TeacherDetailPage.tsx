@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
 import { useTeacher } from '@/hooks/useTeachers'
+import { useTeacherOfferings } from '@/hooks/useTeacherOfferings'
 import { TeacherProfileView } from '@/components/teacher'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
@@ -11,16 +12,25 @@ import { PackagePurchase } from '@/components/packages/PackagePurchase'
 export function TeacherDetailPage() {
   const { teacherId } = useParams<{ teacherId: string }>()
   const { data: teacher, isLoading, error } = useTeacher(teacherId || '')
+  const { data: offerings = [], isLoading: offeringsLoading } = useTeacherOfferings(teacherId || '')
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const [userSelectedDuration, setUserSelectedDuration] = useState<number | null>(null)
   const [purchaseModal, setPurchaseModal] = useState<{
     type: 'single' | 'package_5' | 'package_10'
     price: number
     classes: number
+    durationMinutes: number
   } | null>(null)
 
-  const handlePurchase = (packageType: 'single' | '5' | '10') => {
+  // Derive selected duration: use user's selection if available, otherwise default to first offering
+  const selectedDuration = userSelectedDuration ?? (offerings.length > 0 ? offerings[0].duration_minutes : null)
+
+  const handlePurchase = (packageType: 'single' | '5' | '10', durationMinutes: number) => {
     if (!teacher) return
+
+    // Find the offering for this duration
+    const offering = offerings.find(o => o.duration_minutes === durationMinutes)
 
     let type: 'single' | 'package_5' | 'package_10'
     let price: number
@@ -28,19 +38,19 @@ export function TeacherDetailPage() {
 
     if (packageType === 'single') {
       type = 'single'
-      price = teacher.hourly_rate || 0
+      price = offering?.single_rate || teacher.hourly_rate || 0
       classes = 1
     } else if (packageType === '5') {
       type = 'package_5'
-      price = teacher.package_5_rate || 0
+      price = offering?.package_5_rate || teacher.package_5_rate || 0
       classes = 5
     } else {
       type = 'package_10'
-      price = teacher.package_10_rate || 0
+      price = offering?.package_10_rate || teacher.package_10_rate || 0
       classes = 10
     }
 
-    setPurchaseModal({ type, price, classes })
+    setPurchaseModal({ type, price, classes, durationMinutes })
   }
 
   const handlePurchaseSuccess = () => {
@@ -54,7 +64,7 @@ export function TeacherDetailPage() {
     setPurchaseModal(null)
   }
 
-  if (isLoading) {
+  if (isLoading || offeringsLoading) {
     return (
       <div className="bg-slate-50 min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center">
@@ -90,6 +100,9 @@ export function TeacherDetailPage() {
 
         <TeacherProfileView
           teacher={teacher}
+          offerings={offerings}
+          selectedDuration={selectedDuration}
+          onDurationSelect={setUserSelectedDuration}
           onPurchase={isAuthenticated ? handlePurchase : undefined}
         />
 
@@ -113,6 +126,7 @@ export function TeacherDetailPage() {
               packageType={purchaseModal.type}
               price={purchaseModal.price}
               classes={purchaseModal.classes}
+              durationMinutes={purchaseModal.durationMinutes}
               onSuccess={handlePurchaseSuccess}
               onCancel={handlePurchaseCancel}
             />

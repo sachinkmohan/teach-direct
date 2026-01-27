@@ -8,34 +8,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTeacherProfile } from '@/hooks/useTeachers'
 import { useUserProfile } from '@/hooks/useUser'
+import { useMyTeacherOfferings, useUpsertOffering, useToggleOfferingActive, useDeleteOffering } from '@/hooks/useTeacherOfferings'
+import { DurationPricingEditor } from '@/components/teacher/DurationPricingEditor'
 import { supabase } from '@/lib/supabase'
+import type { TeacherLessonOffering } from '@/types/database'
 
 const teacherProfileSchema = z.object({
   display_name: z.string().min(2, 'Display name must be at least 2 characters'),
   bio: z.string().min(50, 'Bio must be at least 50 characters'),
   subjects: z.string().min(1, 'Enter at least one subject'),
   languages: z.string().min(1, 'Enter at least one language'),
-  hourly_rate: z.string().min(1, 'Hourly rate is required').transform((val) => {
-    const num = Number(val)
-    if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 1) throw new Error('Minimum rate is €1')
-    if (num > 500) throw new Error('Maximum rate is €500')
-    return num
-  }),
-  package_5_rate: z.string().optional().transform((val) => {
-    if (!val || val === '') return undefined
-    const num = Number(val)
-    if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 1) throw new Error('Minimum is €1')
-    return num
-  }),
-  package_10_rate: z.string().optional().transform((val) => {
-    if (!val || val === '') return undefined
-    const num = Number(val)
-    if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 1) throw new Error('Minimum is €1')
-    return num
-  }),
 })
 
 // Input type for form fields (what the form sees)
@@ -47,8 +29,13 @@ export function TeacherOnboardingPage() {
   const navigate = useNavigate()
   const { data: userProfile, isLoading: userLoading } = useUserProfile()
   const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile()
+  const { data: offerings = [], isLoading: offeringsLoading } = useMyTeacherOfferings()
+  const upsertOffering = useUpsertOffering()
+  const toggleOfferingActive = useToggleOfferingActive()
+  const deleteOffering = useDeleteOffering()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [offeringError, setOfferingError] = useState<string | null>(null)
 
   const {
     register,
@@ -66,14 +53,18 @@ export function TeacherOnboardingPage() {
         bio: teacherProfile.bio || '',
         subjects: teacherProfile.subjects?.join(', ') || '',
         languages: teacherProfile.languages?.join(', ') || '',
-        hourly_rate: teacherProfile.hourly_rate?.toString() || '',
-        package_5_rate: teacherProfile.package_5_rate?.toString() || '',
-        package_10_rate: teacherProfile.package_10_rate?.toString() || '',
       })
     }
   }, [teacherProfile, userProfile, reset])
 
   const onSubmit = async (data: TeacherProfileFormData) => {
+    // Validate that at least one active offering exists
+    const activeOfferings = offerings.filter(o => o.is_active)
+    if (activeOfferings.length === 0) {
+      setOfferingError('You must have at least one active duration with pricing to save your profile.')
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
 
@@ -93,6 +84,9 @@ export function TeacherOnboardingPage() {
       const subjects = data.subjects.split(',').map((s) => s.trim()).filter(Boolean)
       const languages = data.languages.split(',').map((l) => l.trim()).filter(Boolean)
 
+      // Get the first active offering to set legacy hourly_rate for backward compatibility
+      const primaryOffering = activeOfferings[0]
+
       // Upsert teacher profile
       const { error: profileError } = await supabase
         .from('teacher_profiles')
@@ -101,9 +95,10 @@ export function TeacherOnboardingPage() {
           bio: data.bio,
           subjects,
           languages,
-          hourly_rate: data.hourly_rate,
-          package_5_rate: data.package_5_rate ?? null,
-          package_10_rate: data.package_10_rate ?? null,
+          // Set legacy fields from primary offering for backward compatibility
+          hourly_rate: primaryOffering.single_rate,
+          package_5_rate: primaryOffering.package_5_rate,
+          package_10_rate: primaryOffering.package_10_rate,
           stripe_connect_status: 'pending',
           available_balance: 0,
           pending_balance: 0,
@@ -122,7 +117,64 @@ export function TeacherOnboardingPage() {
     }
   }
 
-  if (userLoading || profileLoading) {
+  const handleAddDuration = async (duration: 30 | 45 | 60) => {
+    setOfferingError(null)
+    try {
+      await upsertOffering.mutateAsync({
+        duration_minutes: duration,
+        single_rate: duration === 30 ? 15 : duration === 45 ? 20 : 25, // Default rates
+        is_active: true,
+      })
+    } catch (err) {
+      setOfferingError(err instanceof Error ? err.message : 'Failed to add duration')
+    }
+  }
+
+  const handleUpdateOffering = async (offering: TeacherLessonOffering) => {
+    setOfferingError(null)
+    try {
+      await upsertOffering.mutateAsync({
+        duration_minutes: offering.duration_minutes,
+        single_rate: offering.single_rate,
+        package_5_rate: offering.package_5_rate,
+        package_10_rate: offering.package_10_rate,
+        is_active: offering.is_active,
+      })
+    } catch (err) {
+      setOfferingError(err instanceof Error ? err.message : 'Failed to update offering')
+    }
+  }
+
+  const handleToggleActive = async (offeringId: string, isActive: boolean) => {
+    setOfferingError(null)
+    // Prevent deactivating the last active offering
+    const activeOfferings = offerings.filter(o => o.is_active)
+    if (!isActive && activeOfferings.length === 1 && activeOfferings[0].id === offeringId) {
+      setOfferingError('You must have at least one active duration.')
+      return
+    }
+    try {
+      await toggleOfferingActive.mutateAsync({ offeringId, isActive })
+    } catch (err) {
+      setOfferingError(err instanceof Error ? err.message : 'Failed to update offering')
+    }
+  }
+
+  const handleRemoveOffering = async (offeringId: string) => {
+    setOfferingError(null)
+    // Prevent removing the last offering
+    if (offerings.length === 1) {
+      setOfferingError('You must have at least one duration configured.')
+      return
+    }
+    try {
+      await deleteOffering.mutateAsync(offeringId)
+    } catch (err) {
+      setOfferingError(err instanceof Error ? err.message : 'Failed to remove offering')
+    }
+  }
+
+  if (userLoading || profileLoading || offeringsLoading) {
     return (
       <div className="bg-slate-50 min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
@@ -218,57 +270,15 @@ export function TeacherOnboardingPage() {
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Pricing</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="hourly_rate" className="text-sm font-medium text-slate-700">
-                      Hourly Rate (€) *
-                    </label>
-                    <Input
-                      id="hourly_rate"
-                      type="number"
-                      step="0.01"
-                      placeholder="25.00"
-                      {...register('hourly_rate')}
-                    />
-                    {errors.hourly_rate && (
-                      <p className="text-sm text-red-600">{errors.hourly_rate.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="package_5_rate" className="text-sm font-medium text-slate-700">
-                      5-Class Package (€)
-                    </label>
-                    <Input
-                      id="package_5_rate"
-                      type="number"
-                      step="0.01"
-                      placeholder="110.00"
-                      {...register('package_5_rate')}
-                    />
-                    {errors.package_5_rate && (
-                      <p className="text-sm text-red-600">{errors.package_5_rate.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="package_10_rate" className="text-sm font-medium text-slate-700">
-                      10-Class Package (€)
-                    </label>
-                    <Input
-                      id="package_10_rate"
-                      type="number"
-                      step="0.01"
-                      placeholder="200.00"
-                      {...register('package_10_rate')}
-                    />
-                    {errors.package_10_rate && (
-                      <p className="text-sm text-red-600">{errors.package_10_rate.message}</p>
-                    )}
-                  </div>
-                </div>
+                <DurationPricingEditor
+                  offerings={offerings}
+                  onAdd={handleAddDuration}
+                  onUpdate={handleUpdateOffering}
+                  onToggleActive={handleToggleActive}
+                  onRemove={handleRemoveOffering}
+                  isLoading={upsertOffering.isPending || toggleOfferingActive.isPending || deleteOffering.isPending}
+                  error={offeringError}
+                />
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>

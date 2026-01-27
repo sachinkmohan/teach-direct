@@ -11,6 +11,7 @@ interface PackagePurchaseProps {
   packageType: 'single' | 'package_5' | 'package_10'
   price: number
   classes: number
+  durationMinutes: number
   onSuccess: () => void
   onCancel: () => void
 }
@@ -21,6 +22,7 @@ export function PackagePurchase({
   packageType,
   price,
   classes,
+  durationMinutes,
   onSuccess,
   onCancel,
 }: PackagePurchaseProps) {
@@ -59,6 +61,7 @@ export function PackagePurchase({
         body: {
           teacherId,
           packageType,
+          durationMinutes,
           idempotencyKey,
         },
         headers: {
@@ -103,6 +106,7 @@ export function PackagePurchase({
         remaining_classes: classes,
         price_per_class: price / classes,
         total_amount: price,
+        duration_minutes: durationMinutes,
         status: 'active',
         stripe_payment_intent_id: data.paymentIntentId,
       })
@@ -150,6 +154,10 @@ export function PackagePurchase({
           <div className="space-y-2">
             <p className="text-sm text-slate-600">Package Details</p>
             <div className="bg-slate-50 p-4 rounded-md space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm">Lesson Duration:</span>
+                <span className="text-sm font-medium">{durationMinutes} minutes</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-sm">Total Classes:</span>
                 <span className="text-sm font-medium">{classes}</span>

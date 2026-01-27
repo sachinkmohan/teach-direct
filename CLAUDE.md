@@ -123,9 +123,10 @@ queryClient.invalidateQueries({ queryKey: ['packages'] })
 
 **Core Tables**:
 - `users` - User profiles with role, email, timezone
-- `teacher_profiles` - Teacher data (rates, Stripe Connect ID, balance)
-- `packages` - Lesson packages purchased by students
-- `lessons` - Individual lesson bookings with status lifecycle
+- `teacher_profiles` - Teacher data (Stripe Connect ID, balance)
+- `teacher_lesson_offerings` - Duration-based pricing (30/45/60 min offerings with active/inactive toggle)
+- `packages` - Lesson packages purchased by students (includes `duration_minutes`)
+- `lessons` - Individual lesson bookings with status lifecycle (duration inherited from package)
 - `transactions` - Payment history
 - `monthly_earnings` - Aggregated teacher earnings
 
@@ -185,6 +186,19 @@ OR Cancelled before lesson → "cancelled" (refund)
 
 ## Working with Supabase
 
+### Local Development with Supabase
+
+```bash
+# Start local Supabase (PostgreSQL, Auth, Edge Functions)
+supabase start
+
+# Reset database and apply all migrations + seed data
+supabase db reset
+
+# View local Supabase status and URLs
+supabase status
+```
+
 ### Running Migrations
 
 Database migrations are in `supabase/migrations/`. Apply via Supabase Dashboard or CLI:
@@ -193,7 +207,7 @@ Database migrations are in `supabase/migrations/`. Apply via Supabase Dashboard 
 # Link to remote project
 supabase link --project-ref your-project-ref
 
-# Apply migrations
+# Apply migrations to remote
 supabase db push
 ```
 

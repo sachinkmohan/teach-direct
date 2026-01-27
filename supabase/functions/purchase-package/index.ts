@@ -59,11 +59,22 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { teacherId, packageType, idempotencyKey } = await req.json();
+    const { teacherId, packageType, durationMinutes, idempotencyKey } = await req.json();
 
-    if (!teacherId || !packageType) {
+    if (!teacherId || !packageType || !durationMinutes) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing required fields (teacherId, packageType, durationMinutes)" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Validate durationMinutes
+    if (![30, 45, 60].includes(durationMinutes)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid duration. Must be 30, 45, or 60 minutes." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -84,7 +95,8 @@ serve(async (req) => {
       );
     }
     const stripeIdempotencyKey = idempotencyKey;
-    // Get teacher profile
+
+    // Get teacher profile for Stripe Connect ID
     const { data: teacherProfile, error: profileError } = await supabaseAdmin
       .from("teacher_profiles")
       .select("*")
@@ -109,23 +121,60 @@ serve(async (req) => {
       );
     }
 
-    // Calculate package details
+    // Get the offering for this duration from teacher_lesson_offerings
+    const { data: offering, error: offeringError } = await supabaseAdmin
+      .from("teacher_lesson_offerings")
+      .select("*")
+      .eq("teacher_id", teacherId)
+      .eq("duration_minutes", durationMinutes)
+      .eq("is_active", true)
+      .single();
+
+    if (offeringError || !offering) {
+      return new Response(
+        JSON.stringify({ error: "No active offering found for this duration" }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Calculate package details from offering
     let totalClasses: number;
     let pricePerClass: number;
     let totalAmount: number;
 
     if (packageType === "single") {
       totalClasses = 1;
-      pricePerClass = teacherProfile.hourly_rate;
-      totalAmount = teacherProfile.hourly_rate;
+      totalAmount = offering.single_rate;
+      pricePerClass = offering.single_rate;
     } else if (packageType === "package_5") {
+      if (!offering.package_5_rate) {
+        return new Response(
+          JSON.stringify({ error: "5-class package not available for this duration" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
       totalClasses = 5;
-      pricePerClass = teacherProfile.package_5_rate / 5;
-      totalAmount = teacherProfile.package_5_rate;
+      totalAmount = offering.package_5_rate;
+      pricePerClass = offering.package_5_rate / 5;
     } else if (packageType === "package_10") {
+      if (!offering.package_10_rate) {
+        return new Response(
+          JSON.stringify({ error: "10-class package not available for this duration" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
       totalClasses = 10;
-      pricePerClass = teacherProfile.package_10_rate / 10;
-      totalAmount = teacherProfile.package_10_rate;
+      totalAmount = offering.package_10_rate;
+      pricePerClass = offering.package_10_rate / 10;
     } else {
       return new Response(JSON.stringify({ error: "Invalid package type" }), {
         status: 400,
@@ -160,6 +209,7 @@ serve(async (req) => {
           "metadata[package_type]": packageType,
           "metadata[total_classes]": totalClasses.toString(),
           "metadata[price_per_class]": pricePerClass.toString(),
+          "metadata[duration_minutes]": durationMinutes.toString(),
           "metadata[teacher_connect_id]": teacherProfile.stripe_connect_id,
         }),
       },
@@ -193,6 +243,7 @@ serve(async (req) => {
           teacher_id: teacherId,
           package_type: packageType,
           total_classes: totalClasses,
+          duration_minutes: durationMinutes,
         },
       });
 

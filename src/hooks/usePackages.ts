@@ -10,6 +10,7 @@ export interface Package {
   remaining_classes: number
   price_per_class: number
   total_amount: number
+  duration_minutes: number
   status: 'active' | 'completed' | 'expired' | 'refunded'
   created_at: string
   updated_at: string
