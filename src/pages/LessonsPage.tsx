@@ -15,6 +15,7 @@ export function LessonsPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('upcoming')
   const [disputeModalLessonId, setDisputeModalLessonId] = useState<string | null>(null)
+  const [confirmingLessonId, setConfirmingLessonId] = useState<string | null>(null)
   const { data: lessons, isLoading, error } = useLessons()
   const { data: userProfile } = useUserProfile()
   const cancelLesson = useCancelLesson()
@@ -78,14 +79,22 @@ export function LessonsPage() {
     }
   }
 
-  const handleConfirm = async (lessonId: string) => {
+  const handleConfirm = (lessonId: string) => {
+    if (confirmingLessonId) return // Prevent multiple confirmations at once
+
     if (window.confirm('Are you sure you want to confirm this lesson? Funds will be released to the teacher.')) {
-      try {
-        await confirmLesson.mutateAsync(lessonId)
-      } catch (err) {
-        console.error('Failed to confirm lesson:', err)
-        alert(err instanceof Error ? err.message : 'Failed to confirm lesson. Please try again.')
-      }
+      // Disable the button immediately
+      setConfirmingLessonId(lessonId)
+
+      // Fire and forget - process in background
+      confirmLesson.mutateAsync(lessonId)
+        .catch((err) => {
+          console.error('Failed to confirm lesson:', err)
+          alert(err instanceof Error ? err.message : 'Failed to confirm lesson. Please try again.')
+        })
+        .finally(() => {
+          setConfirmingLessonId(null)
+        })
     }
   }
 
@@ -209,6 +218,7 @@ export function LessonsPage() {
                 onConfirm={handleConfirm}
                 onDispute={handleDispute}
                 onJoin={handleJoin}
+                isConfirming={confirmingLessonId === lesson.id}
               />
             ))}
           </div>
