@@ -347,6 +347,6 @@ Database types are defined in `src/types/database.ts`. When schema changes:
 - **Auto-Release**: Lessons auto-confirm 3 days after completion
 - **Teacher Onboarding**: Must have active Stripe Connect to receive payments
 
-## Other Constraitns
+## Other Constraints
 
 - When asked to review the comments by coderabbit on my PR, always fetch the git URL and don't use the 'gh commands'
