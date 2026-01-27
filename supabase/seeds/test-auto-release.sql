@@ -11,6 +11,7 @@ INSERT INTO public.packages (
   remaining_classes,
   price_per_class,
   total_amount,
+  duration_minutes,
   status,
   created_at,
   updated_at
@@ -23,6 +24,7 @@ SELECT
   4,  -- 1 lesson already used
   4.80,
   24.00,
+  30,  -- 30 minute lessons
   'active',
   NOW(),
   NOW()
@@ -49,7 +51,7 @@ INSERT INTO public.lessons (
   '11111111-1111-1111-1111-111111111111'::uuid,  -- John (teacher)
   '22222222-2222-2222-2222-222222222222'::uuid,  -- Jane (student)
   NOW() - INTERVAL '5 days',  -- Lesson was 5 days ago
-  60,
+  30,
   'pending_confirmation',
   NOW() - INTERVAL '1 day',  -- Auto-release was supposed to happen 1 day ago
   NOW() - INTERVAL '5 days',

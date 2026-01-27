@@ -1,3 +1,6 @@
+// Shared type for lesson durations (used across Package, Lesson, TeacherLessonOffering)
+export type LessonDurationMinutes = 30 | 45 | 60
+
 export interface User {
   id: string
   email: string
@@ -43,8 +46,22 @@ export interface Package {
   remaining_classes: number
   price_per_class: number
   total_amount: number
+  duration_minutes: LessonDurationMinutes
   status: 'active' | 'completed' | 'expired' | 'refunded'
   stripe_payment_intent_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TeacherLessonOffering {
+  id: string
+  teacher_id: string
+  duration_minutes: LessonDurationMinutes
+  single_rate: number
+  package_5_rate: number | null
+  package_10_rate: number | null
+  is_active: boolean
+  display_order: number
   created_at: string
   updated_at: string
 }
@@ -55,7 +72,7 @@ export interface Lesson {
   teacher_id: string
   student_id: string
   scheduled_at: string
-  duration_minutes: number
+  duration_minutes: LessonDurationMinutes
   meeting_link: string | null
   status: 'scheduled' | 'completed' | 'pending_confirmation' | 'awaiting_admin_approval' | 'confirmed' | 'disputed' | 'cancelled'
   auto_release_at: string | null

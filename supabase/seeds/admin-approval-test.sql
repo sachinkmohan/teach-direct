@@ -34,6 +34,7 @@ INSERT INTO public.packages (
   remaining_classes,
   price_per_class,
   total_amount,
+  duration_minutes,
   status,
   created_at,
   updated_at
@@ -45,6 +46,7 @@ INSERT INTO public.packages (
   3,  -- 2 lessons already booked
   4.80,
   24.00,
+  30,  -- 30 minute lessons
   'active',
   NOW(),
   NOW()
@@ -71,7 +73,7 @@ INSERT INTO public.lessons (
   '11111111-1111-1111-1111-111111111111',
   '22222222-2222-2222-2222-222222222222',
   NOW() - INTERVAL '2 days',
-  60,
+  30,
   'awaiting_admin_approval',
   NOW() - INTERVAL '3 days',
   NOW()
@@ -94,7 +96,7 @@ INSERT INTO public.lessons (
   '11111111-1111-1111-1111-111111111111',
   '22222222-2222-2222-2222-222222222222',
   NOW() - INTERVAL '1 day',
-  60,
+  30,
   'pending_confirmation',
   NOW() - INTERVAL '2 days',
   NOW()

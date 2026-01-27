@@ -163,9 +163,37 @@ SET
   languages = ARRAY['English', 'Malayalam', 'Hindi'],
   hourly_rate = 5.00,
   package_5_rate = 24.00,
-  package_10_rate = 49.00
-  -- Stripe NOT connected - test the onboarding flow manually
+  package_10_rate = 45.00,
+  stripe_connect_id = 'acct_1SuAEtL1IsnZMWBN',
+  stripe_connect_status = 'active'
 WHERE user_id = '11111111-1111-1111-1111-111111111111';
+
+-- ============================================
+-- 3. Create default lesson offering for John (30 minutes)
+-- ============================================
+
+INSERT INTO public.teacher_lesson_offerings (
+  teacher_id,
+  duration_minutes,
+  single_rate,
+  package_5_rate,
+  package_10_rate,
+  is_active,
+  display_order
+) VALUES (
+  '11111111-1111-1111-1111-111111111111',
+  30,
+  5.00,
+  24.00,
+  49.00,
+  true,
+  0
+) ON CONFLICT (teacher_id, duration_minutes) DO UPDATE
+SET
+  single_rate = EXCLUDED.single_rate,
+  package_5_rate = EXCLUDED.package_5_rate,
+  package_10_rate = EXCLUDED.package_10_rate,
+  is_active = EXCLUDED.is_active;
 
 -- ============================================
 -- Summary of Test Accounts
@@ -176,10 +204,13 @@ WHERE user_id = '11111111-1111-1111-1111-111111111111';
 --   Password: password123
 --   Name: John
 --   Subject: Malayalam
---   Hourly Rate: 5 EUR
---   5-Class Package: 24 EUR (4.80 EUR/class)
---   10-Class Package: 49 EUR (4.90 EUR/class)
---   Stripe: NOT connected (test onboarding flow)
+--   Legacy Rates (for backward compatibility):
+--     Hourly Rate: 5 EUR
+--     5-Class Package: 24 EUR (4.80 EUR/class)
+--     10-Class Package: 49 EUR (4.90 EUR/class)
+--   Lesson Offerings:
+--     30 minutes: 5 EUR single, 24 EUR (5 classes), 49 EUR (10 classes) - ACTIVE
+--   Stripe: CONNECTED (acct_1SuAEtL1IsnZMWBN, status: active)
 --
 -- STUDENT:
 --   Email: jane@student.test

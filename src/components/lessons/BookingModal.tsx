@@ -89,7 +89,10 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Package Info */}
-          <div className="bg-slate-50 p-4 rounded-md">
+          <div className="bg-slate-50 p-4 rounded-md space-y-1">
+            <p className="text-sm text-slate-600">
+              Lesson duration: <span className="font-semibold">{pkg.duration_minutes} minutes</span>
+            </p>
             <p className="text-sm text-slate-600">
               Remaining classes: <span className="font-semibold">{pkg.remaining_classes}</span>
             </p>

@@ -1,14 +1,51 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PricingDisplay } from './PricingDisplay'
+import { DurationSelector } from './DurationSelector'
 import type { TeacherWithUser } from '@/hooks/useTeachers'
+import type { TeacherLessonOffering } from '@/types/database'
 
 interface TeacherProfileViewProps {
   teacher: TeacherWithUser
-  onPurchase?: (packageType: 'single' | '5' | '10') => void
+  offerings?: TeacherLessonOffering[]
+  selectedDuration?: number | null
+  onDurationSelect?: (duration: number) => void
+  onPurchase?: (packageType: 'single' | '5' | '10', durationMinutes: number) => void
 }
 
-export function TeacherProfileView({ teacher, onPurchase }: TeacherProfileViewProps) {
+export function TeacherProfileView({
+  teacher,
+  offerings = [],
+  selectedDuration,
+  onDurationSelect,
+  onPurchase,
+}: TeacherProfileViewProps) {
   const displayName = teacher.users?.display_name || teacher.users?.email?.split('@')[0] || 'Teacher'
+
+  // Find the selected offering or default to first offering, then fall back to legacy pricing
+  const selectedOffering = selectedDuration
+    ? offerings.find(o => o.duration_minutes === selectedDuration)
+    : offerings[0]
+
+  // Determine pricing to display - use offering if available, otherwise fall back to legacy fields
+  const pricingToShow = selectedOffering
+    ? {
+        hourlyRate: selectedOffering.single_rate,
+        package5Rate: selectedOffering.package_5_rate,
+        package10Rate: selectedOffering.package_10_rate,
+        durationMinutes: selectedOffering.duration_minutes,
+      }
+    : {
+        hourlyRate: teacher.hourly_rate,
+        package5Rate: teacher.package_5_rate,
+        package10Rate: teacher.package_10_rate,
+        durationMinutes: 30, // Default for legacy
+      }
+
+  const handlePurchase = (packageType: 'single' | '5' | '10') => {
+    if (onPurchase) {
+      onPurchase(packageType, pricingToShow.durationMinutes)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -67,11 +104,27 @@ export function TeacherProfileView({ teacher, onPurchase }: TeacherProfileViewPr
           <CardTitle>Pricing</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Duration Selector - only show if multiple offerings available */}
+          {offerings.length > 1 && onDurationSelect && (
+            <DurationSelector
+              offerings={offerings}
+              selectedDuration={selectedDuration ?? null}
+              onSelect={onDurationSelect}
+            />
+          )}
+
+          {/* Show duration label if only one offering exists */}
+          {selectedOffering && offerings.length === 1 && (
+            <div className="mb-4 text-sm text-slate-500">
+              Lesson duration: <span className="font-medium text-slate-900">{selectedOffering.duration_minutes} minutes</span>
+            </div>
+          )}
+
           <PricingDisplay
-            hourlyRate={teacher.hourly_rate}
-            package5Rate={teacher.package_5_rate}
-            package10Rate={teacher.package_10_rate}
-            onPurchase={onPurchase}
+            hourlyRate={pricingToShow.hourlyRate}
+            package5Rate={pricingToShow.package5Rate}
+            package10Rate={pricingToShow.package10Rate}
+            onPurchase={onPurchase ? handlePurchase : undefined}
             showPurchaseButtons={!!onPurchase}
           />
         </CardContent>
