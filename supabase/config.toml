@@ -18,5 +18,8 @@ verify_jwt = false
 [functions.confirm-lesson]
 verify_jwt = false
 
+[functions.admin-approve-lesson]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false

@@ -213,6 +213,7 @@ export function LessonsPage() {
                 key={lesson.id}
                 lesson={lesson}
                 userRole={userRole}
+                userTimezone={userTimezone}
                 onCancel={handleCancel}
                 onComplete={handleComplete}
                 onConfirm={handleConfirm}

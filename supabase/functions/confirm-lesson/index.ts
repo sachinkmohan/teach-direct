@@ -16,9 +16,8 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey || !stripeSecretKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Missing environment configuration" }),
         {
@@ -111,16 +110,20 @@ serve(async (req) => {
       );
     }
 
-    // Call the release_lesson_funds function
-    const { data: releaseResult, error: releaseError } = await supabaseAdmin.rpc(
-      "release_lesson_funds",
-      { p_lesson_id: lessonId },
+    // Call the student_confirm_lesson function
+    // This sets status to 'awaiting_admin_approval' - no Stripe transfer occurs here
+    const { error: confirmError } = await supabaseAdmin.rpc(
+      "student_confirm_lesson",
+      {
+        p_lesson_id: lessonId,
+        p_student_id: user.id,
+      },
     );
 
-    if (releaseError) {
-      console.error("Failed to release funds:", releaseError);
+    if (confirmError) {
+      console.error("Failed to confirm lesson:", confirmError);
       return new Response(
-        JSON.stringify({ error: releaseError.message || "Failed to release funds" }),
+        JSON.stringify({ error: confirmError.message || "Failed to confirm lesson" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -128,74 +131,12 @@ serve(async (req) => {
       );
     }
 
-    // releaseResult is an array with one row containing the transfer details
-    const transferDetails = releaseResult?.[0];
-
-    if (!transferDetails || !transferDetails.teacher_connect_id) {
-      console.error("No transfer details returned:", releaseResult);
-      return new Response(
-        JSON.stringify({ error: "Failed to get transfer details" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const { teacher_connect_id, transfer_amount, teacher_id } = transferDetails;
-
-    // Convert to cents for Stripe
-    const transferAmountCents = Math.round(transfer_amount * 100);
-
-    console.log("Creating Stripe transfer:", {
-      amount: transferAmountCents,
-      destination: teacher_connect_id,
-      lessonId,
-    });
-
-    // Create Stripe Transfer to teacher's connected account
-    const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stripeSecretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Idempotency-Key": `lesson-confirm-${lessonId}`,
-      },
-      body: new URLSearchParams({
-        amount: transferAmountCents.toString(),
-        currency: "eur",
-        destination: teacher_connect_id,
-        "metadata[lesson_id]": lessonId,
-        "metadata[teacher_id]": teacher_id,
-        "metadata[type]": "lesson_confirmation",
-      }),
-    });
-
-    const transfer = await transferRes.json();
-
-    if (transfer.error) {
-      console.error("Stripe transfer error:", transfer.error);
-      // Note: Database already updated, but Stripe transfer failed
-      // In production, you'd want to handle this with a retry queue
-      return new Response(
-        JSON.stringify({
-          error: "Lesson confirmed but transfer failed. Please contact support.",
-          transferError: transfer.error.message,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    console.log("Transfer created:", transfer.id);
+    console.log("Lesson confirmed by student, awaiting admin approval:", lessonId);
 
     return new Response(
       JSON.stringify({
         success: true,
-        transferId: transfer.id,
-        amount: transfer_amount,
+        message: "Lesson confirmed. Awaiting admin approval for payment.",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
