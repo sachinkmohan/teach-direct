@@ -21,8 +21,10 @@ export function TeacherProfileView({
 }: TeacherProfileViewProps) {
   const displayName = teacher.users?.display_name || teacher.users?.email?.split('@')[0] || 'Teacher'
 
-  // Find the selected offering or use legacy pricing
-  const selectedOffering = offerings.find(o => o.duration_minutes === selectedDuration)
+  // Find the selected offering or default to first offering, then fall back to legacy pricing
+  const selectedOffering = selectedDuration
+    ? offerings.find(o => o.duration_minutes === selectedDuration)
+    : offerings[0]
 
   // Determine pricing to display - use offering if available, otherwise fall back to legacy fields
   const pricingToShow = selectedOffering

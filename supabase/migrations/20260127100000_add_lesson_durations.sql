@@ -120,18 +120,36 @@ CREATE OR REPLACE FUNCTION "public"."book_lesson_atomic"(
     "p_price_per_class" numeric
 ) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET search_path = public, pg_temp
     AS $$
 DECLARE
   v_lesson_id UUID;
   v_remaining_classes INTEGER;
   v_duration_minutes INTEGER;
+  v_pkg_student_id UUID;
+  v_pkg_teacher_id UUID;
 BEGIN
   -- Lock the package row to prevent concurrent bookings and get duration
-  SELECT remaining_classes, duration_minutes
-  INTO v_remaining_classes, v_duration_minutes
+  SELECT remaining_classes, duration_minutes, student_id, teacher_id
+  INTO v_remaining_classes, v_duration_minutes, v_pkg_student_id, v_pkg_teacher_id
   FROM public.packages
   WHERE id = p_package_id
   FOR UPDATE;
+
+  -- Validate package was found
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Package not found';
+  END IF;
+
+  -- Validate ownership: package must belong to the student
+  IF v_pkg_student_id != p_student_id THEN
+    RAISE EXCEPTION 'Package does not belong to this student';
+  END IF;
+
+  -- Validate package is for the correct teacher
+  IF v_pkg_teacher_id != p_teacher_id THEN
+    RAISE EXCEPTION 'Package is not for this teacher';
+  END IF;
 
   -- Check if package has classes available
   IF v_remaining_classes <= 0 THEN

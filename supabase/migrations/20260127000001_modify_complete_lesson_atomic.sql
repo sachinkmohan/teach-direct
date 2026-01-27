@@ -1,10 +1,12 @@
 -- Migration: Modify complete_lesson_atomic to set auto_release_at to 3 days
 -- Lessons auto-move to awaiting_admin_approval after 3 days if student doesn't confirm
+-- Note: CREATE OR REPLACE preserves existing OWNER and GRANT permissions from base schema
 
 CREATE OR REPLACE FUNCTION public.complete_lesson_atomic(p_lesson_id uuid, p_teacher_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_lesson_teacher_id UUID;

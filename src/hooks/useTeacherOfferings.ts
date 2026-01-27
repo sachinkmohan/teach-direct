@@ -173,6 +173,7 @@ export function useUpdateOfferingsOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-teacher-offerings'] })
+      queryClient.invalidateQueries({ queryKey: ['teacher-offerings'] })
     },
   })
 }

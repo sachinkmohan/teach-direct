@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,6 +131,21 @@ function AddDurationDropdown({ availableDurations, onAdd, disabled }: AddDuratio
   )
 }
 
+// Zod schema for offering price validation
+const offeringPriceSchema = z.object({
+  single_rate: z.coerce.number().min(1, 'Single rate must be at least €1'),
+  package_5_rate: z
+    .union([z.string().length(0), z.coerce.number().min(1, '5-class rate must be at least €1')])
+    .transform(val => (val === '' ? undefined : val))
+    .optional(),
+  package_10_rate: z
+    .union([z.string().length(0), z.coerce.number().min(1, '10-class rate must be at least €1')])
+    .transform(val => (val === '' ? undefined : val))
+    .optional(),
+})
+
+type OfferingPriceFormData = z.infer<typeof offeringPriceSchema>
+
 interface DurationOfferingCardProps {
   offering: TeacherLessonOffering
   onUpdate: (offering: TeacherLessonOffering) => void
@@ -146,32 +164,44 @@ function DurationOfferingCard({
   isLoading,
 }: DurationOfferingCardProps) {
   const [isEditing, setIsEditing] = useState(false)
-  const [singleRate, setSingleRate] = useState(offering.single_rate.toString())
-  const [package5Rate, setPackage5Rate] = useState(offering.package_5_rate?.toString() || '')
-  const [package10Rate, setPackage10Rate] = useState(offering.package_10_rate?.toString() || '')
 
-  const handleSave = () => {
-    const single = parseFloat(singleRate)
-    if (isNaN(single) || single < 1) {
-      return
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<OfferingPriceFormData>({
+    resolver: zodResolver(offeringPriceSchema),
+    defaultValues: {
+      single_rate: offering.single_rate,
+      package_5_rate: offering.package_5_rate ?? undefined,
+      package_10_rate: offering.package_10_rate ?? undefined,
+    },
+  })
+
+  // Reset form when offering changes or editing starts
+  useEffect(() => {
+    if (isEditing) {
+      reset({
+        single_rate: offering.single_rate,
+        package_5_rate: offering.package_5_rate ?? undefined,
+        package_10_rate: offering.package_10_rate ?? undefined,
+      })
     }
+  }, [isEditing, offering, reset])
 
-    const pkg5 = package5Rate ? parseFloat(package5Rate) : null
-    const pkg10 = package10Rate ? parseFloat(package10Rate) : null
-
+  const onSubmit = (data: OfferingPriceFormData) => {
     onUpdate({
       ...offering,
-      single_rate: single,
-      package_5_rate: pkg5 && pkg5 >= 1 ? pkg5 : null,
-      package_10_rate: pkg10 && pkg10 >= 1 ? pkg10 : null,
+      single_rate: data.single_rate,
+      package_5_rate: data.package_5_rate || null,
+      package_10_rate: data.package_10_rate || null,
     })
     setIsEditing(false)
   }
 
   const handleCancel = () => {
-    setSingleRate(offering.single_rate.toString())
-    setPackage5Rate(offering.package_5_rate?.toString() || '')
-    setPackage10Rate(offering.package_10_rate?.toString() || '')
+    reset()
     setIsEditing(false)
   }
 
@@ -221,7 +251,7 @@ function DurationOfferingCard({
       </CardHeader>
       <CardContent>
         {isEditing ? (
-          <div className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-medium text-slate-700">Single Class *</label>
@@ -230,13 +260,14 @@ function DurationOfferingCard({
                   <Input
                     type="number"
                     step="0.01"
-                    min="1"
-                    value={singleRate}
-                    onChange={e => setSingleRate(e.target.value)}
-                    className="pl-7"
+                    {...register('single_rate')}
+                    className={`pl-7 ${errors.single_rate ? 'border-red-500' : ''}`}
                     placeholder="25.00"
                   />
                 </div>
+                {errors.single_rate && (
+                  <p className="text-xs text-red-600 mt-1">{errors.single_rate.message}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">5-Class Package</label>
@@ -245,13 +276,14 @@ function DurationOfferingCard({
                   <Input
                     type="number"
                     step="0.01"
-                    min="1"
-                    value={package5Rate}
-                    onChange={e => setPackage5Rate(e.target.value)}
-                    className="pl-7"
+                    {...register('package_5_rate')}
+                    className={`pl-7 ${errors.package_5_rate ? 'border-red-500' : ''}`}
                     placeholder="110.00"
                   />
                 </div>
+                {errors.package_5_rate && (
+                  <p className="text-xs text-red-600 mt-1">{errors.package_5_rate.message}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">10-Class Package</label>
@@ -260,24 +292,25 @@ function DurationOfferingCard({
                   <Input
                     type="number"
                     step="0.01"
-                    min="1"
-                    value={package10Rate}
-                    onChange={e => setPackage10Rate(e.target.value)}
-                    className="pl-7"
+                    {...register('package_10_rate')}
+                    className={`pl-7 ${errors.package_10_rate ? 'border-red-500' : ''}`}
                     placeholder="200.00"
                   />
                 </div>
+                {errors.package_10_rate && (
+                  <p className="text-xs text-red-600 mt-1">{errors.package_10_rate.message}</p>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" onClick={handleSave} disabled={isLoading}>
+              <Button type="submit" size="sm" disabled={isLoading}>
                 Save
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="flex items-center justify-between">
             <div className="grid grid-cols-3 gap-4 text-sm flex-1">

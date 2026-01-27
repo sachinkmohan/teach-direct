@@ -20,6 +20,7 @@ CREATE OR REPLACE FUNCTION public.student_confirm_lesson(p_lesson_id uuid, p_stu
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_lesson_student_id UUID;
@@ -75,6 +76,7 @@ RETURNS TABLE(
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_lesson_status TEXT;
@@ -203,6 +205,7 @@ CREATE OR REPLACE FUNCTION public.revert_admin_approval(p_lesson_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_lesson_status TEXT;

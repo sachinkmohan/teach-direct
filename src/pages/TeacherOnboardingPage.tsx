@@ -139,6 +139,7 @@ export function TeacherOnboardingPage() {
         package_5_rate: offering.package_5_rate,
         package_10_rate: offering.package_10_rate,
         is_active: offering.is_active,
+        display_order: offering.display_order,
       })
     } catch (err) {
       setOfferingError(err instanceof Error ? err.message : 'Failed to update offering')
