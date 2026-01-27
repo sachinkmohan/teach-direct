@@ -315,3 +315,7 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+ALTER FUNCTION public.complete_lesson_atomic(uuid, uuid) OWNER TO postgres;
+GRANT ALL ON FUNCTION public.complete_lesson_atomic(uuid, uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.complete_lesson_atomic(uuid, uuid) TO service_role;
