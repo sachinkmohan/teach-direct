@@ -163,8 +163,9 @@ SET
   languages = ARRAY['English', 'Malayalam', 'Hindi'],
   hourly_rate = 5.00,
   package_5_rate = 24.00,
-  package_10_rate = 49.00
-  -- Stripe NOT connected - test the onboarding flow manually
+  package_10_rate = 49.00,
+  stripe_connect_id = 'acct_1SuAEtL1IsnZMWBN',
+  stripe_connect_status = 'active'
 WHERE user_id = '11111111-1111-1111-1111-111111111111';
 
 -- ============================================

@@ -190,17 +190,19 @@ function DurationOfferingCard({
     }
   }, [isEditing, offering, reset])
 
-  const onSubmit = (data: OfferingPriceFormData) => {
-    onUpdate({
-      ...offering,
-      single_rate: data.single_rate,
-      package_5_rate: data.package_5_rate || null,
-      package_10_rate: data.package_10_rate || null,
-    })
-    setIsEditing(false)
+  const handleSaveClick = () => {
+    handleSubmit((data) => {
+      onUpdate({
+        ...offering,
+        single_rate: data.single_rate,
+        package_5_rate: data.package_5_rate || null,
+        package_10_rate: data.package_10_rate || null,
+      })
+      setIsEditing(false)
+    })()
   }
 
-  const handleCancel = () => {
+  const handleCancelClick = () => {
     reset()
     setIsEditing(false)
   }
@@ -251,7 +253,15 @@ function DurationOfferingCard({
       </CardHeader>
       <CardContent>
         {isEditing ? (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <div
+            className="space-y-3"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleSaveClick()
+              }
+            }}
+          >
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-medium text-slate-700">Single Class *</label>
@@ -303,14 +313,14 @@ function DurationOfferingCard({
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
+              <Button type="button" variant="ghost" size="sm" onClick={handleCancelClick}>
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={isLoading}>
+              <Button type="button" size="sm" onClick={handleSaveClick} disabled={isLoading}>
                 Save
               </Button>
             </div>
-          </form>
+          </div>
         ) : (
           <div className="flex items-center justify-between">
             <div className="grid grid-cols-3 gap-4 text-sm flex-1">
