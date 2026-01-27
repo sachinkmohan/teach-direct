@@ -30,12 +30,11 @@ dist-ssr
 .env.example
 .env.local.*
 
-# Sql
-*.sql
-*.sql.bak
+
 
 # Temporary files
 temp
+*.bak
 
 # Unreviewed files
 unreviewed-docs
