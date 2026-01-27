@@ -458,6 +458,10 @@ export function DashboardPage() {
                             {/* Package Details */}
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
+                                <p className="text-slate-500 text-xs">Lesson Duration</p>
+                                <p className="font-medium text-slate-900">{pkg.duration_minutes} minutes</p>
+                              </div>
+                              <div>
                                 <p className="text-slate-500 text-xs">Total Classes</p>
                                 <p className="font-medium text-slate-900">{pkg.total_classes}</p>
                               </div>
