@@ -133,15 +133,18 @@ function AddDurationDropdown({ availableDurations, onAdd, disabled }: AddDuratio
 
 // Zod schema for offering price validation
 const offeringPriceSchema = z.object({
-  single_rate: z.coerce.number().min(1, 'Single rate must be at least €1'),
-  package_5_rate: z
-    .union([z.string().length(0), z.coerce.number().min(1, '5-class rate must be at least €1')])
-    .transform(val => (val === '' ? undefined : val))
-    .optional(),
-  package_10_rate: z
-    .union([z.string().length(0), z.coerce.number().min(1, '10-class rate must be at least €1')])
-    .transform(val => (val === '' ? undefined : val))
-    .optional(),
+  single_rate: z.string().min(1, 'Single rate is required').refine(
+    (val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 1,
+    'Single rate must be at least €1'
+  ),
+  package_5_rate: z.string().refine(
+    (val) => val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 1),
+    '5-class rate must be at least €1'
+  ).optional(),
+  package_10_rate: z.string().refine(
+    (val) => val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 1),
+    '10-class rate must be at least €1'
+  ).optional(),
 })
 
 type OfferingPriceFormData = z.infer<typeof offeringPriceSchema>
@@ -173,9 +176,9 @@ function DurationOfferingCard({
   } = useForm<OfferingPriceFormData>({
     resolver: zodResolver(offeringPriceSchema),
     defaultValues: {
-      single_rate: offering.single_rate,
-      package_5_rate: offering.package_5_rate ?? undefined,
-      package_10_rate: offering.package_10_rate ?? undefined,
+      single_rate: String(offering.single_rate),
+      package_5_rate: offering.package_5_rate ? String(offering.package_5_rate) : '',
+      package_10_rate: offering.package_10_rate ? String(offering.package_10_rate) : '',
     },
   })
 
@@ -183,9 +186,9 @@ function DurationOfferingCard({
   useEffect(() => {
     if (isEditing) {
       reset({
-        single_rate: offering.single_rate,
-        package_5_rate: offering.package_5_rate ?? undefined,
-        package_10_rate: offering.package_10_rate ?? undefined,
+        single_rate: String(offering.single_rate),
+        package_5_rate: offering.package_5_rate ? String(offering.package_5_rate) : '',
+        package_10_rate: offering.package_10_rate ? String(offering.package_10_rate) : '',
       })
     }
   }, [isEditing, offering, reset])
@@ -194,9 +197,9 @@ function DurationOfferingCard({
     handleSubmit((data) => {
       onUpdate({
         ...offering,
-        single_rate: data.single_rate,
-        package_5_rate: data.package_5_rate || null,
-        package_10_rate: data.package_10_rate || null,
+        single_rate: parseFloat(data.single_rate),
+        package_5_rate: data.package_5_rate ? parseFloat(data.package_5_rate) : null,
+        package_10_rate: data.package_10_rate ? parseFloat(data.package_10_rate) : null,
       })
       setIsEditing(false)
     })()

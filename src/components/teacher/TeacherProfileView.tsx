@@ -105,7 +105,7 @@ export function TeacherProfileView({
         </CardHeader>
         <CardContent>
           {/* Duration Selector - only show if multiple offerings available */}
-          {offerings.length > 0 && onDurationSelect && (
+          {offerings.length > 1 && onDurationSelect && (
             <DurationSelector
               offerings={offerings}
               selectedDuration={selectedDuration ?? null}
@@ -113,7 +113,7 @@ export function TeacherProfileView({
             />
           )}
 
-          {/* Show duration label if using offerings */}
+          {/* Show duration label if only one offering exists */}
           {selectedOffering && offerings.length === 1 && (
             <div className="mb-4 text-sm text-slate-500">
               Lesson duration: <span className="font-medium text-slate-900">{selectedOffering.duration_minutes} minutes</span>

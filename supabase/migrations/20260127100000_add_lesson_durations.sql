@@ -80,8 +80,11 @@ CREATE POLICY "Teachers can delete own offerings" ON "public"."teacher_lesson_of
 -- ============================================================================
 -- 5. Grant permissions
 -- ============================================================================
-GRANT ALL ON TABLE "public"."teacher_lesson_offerings" TO "anon";
+-- Anonymous users can only read active offerings (RLS enforces is_active = true)
+GRANT SELECT ON TABLE "public"."teacher_lesson_offerings" TO "anon";
+-- Authenticated users can read, insert, update, delete their own offerings (RLS enforces ownership)
 GRANT ALL ON TABLE "public"."teacher_lesson_offerings" TO "authenticated";
+-- Service role has full access (for edge functions)
 GRANT ALL ON TABLE "public"."teacher_lesson_offerings" TO "service_role";
 
 -- ============================================================================

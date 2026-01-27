@@ -81,8 +81,8 @@ supabase/
 Import using `@/` alias for src directory:
 
 ```typescript
-import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 ```
 
 ## Key Architectural Patterns
@@ -104,24 +104,27 @@ All API calls use React Query with custom hooks in `src/hooks/`:
 ```typescript
 // Example: useTeachers hook
 useQuery({
-  queryKey: ['teachers', filters],
-  queryFn: async () => { /* Supabase query */ },
+  queryKey: ["teachers", filters],
+  queryFn: async () => {
+    /* Supabase query */
+  },
   enabled: condition,
-  staleTime: 5 * 60 * 1000  // 5 minutes
-})
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
 ```
 
 **Query Invalidation**: Mutations automatically invalidate related queries:
 
 ```typescript
 // After booking a lesson
-queryClient.invalidateQueries({ queryKey: ['lessons'] })
-queryClient.invalidateQueries({ queryKey: ['packages'] })
+queryClient.invalidateQueries({ queryKey: ["lessons"] });
+queryClient.invalidateQueries({ queryKey: ["packages"] });
 ```
 
 ### Database Schema (Supabase)
 
 **Core Tables**:
+
 - `users` - User profiles with role, email, timezone
 - `teacher_profiles` - Teacher data (Stripe Connect ID, balance)
 - `teacher_lesson_offerings` - Duration-based pricing (30/45/60 min offerings with active/inactive toggle)
@@ -131,12 +134,14 @@ queryClient.invalidateQueries({ queryKey: ['packages'] })
 - `monthly_earnings` - Aggregated teacher earnings
 
 **RPC Functions** (atomic operations):
+
 - `book_lesson_atomic` - Book lesson and deduct package classes
 - `cancel_lesson_atomic` - Cancel lesson and refund classes
 - `complete_lesson_atomic` - Teacher marks lesson complete
 - `dispute_lesson` - Student disputes a lesson
 
 **Edge Functions** (serverless API):
+
 - `purchase-package` - Creates Stripe PaymentIntent
 - `confirm-lesson` - Releases funds to teacher (90/10 split)
 - `stripe-connect-onboard` - Initiates Stripe Connect onboarding
@@ -145,6 +150,7 @@ queryClient.invalidateQueries({ queryKey: ['packages'] })
 ### Payment Processing
 
 **Student Purchase Flow**:
+
 1. Browse teachers → select package → `PackagePurchase.tsx` modal
 2. Enter card via Stripe CardElement
 3. Call `purchase-package` Edge Function
@@ -153,6 +159,7 @@ queryClient.invalidateQueries({ queryKey: ['packages'] })
 6. Package record created in database
 
 **Teacher Payout Flow**:
+
 1. Teacher completes Stripe Connect onboarding
 2. `stripe_connect_id` stored in `teacher_profiles`
 3. On lesson confirmation → `confirm-lesson` Edge Function
@@ -224,9 +231,11 @@ supabase functions deploy purchase-package
 ### Calling Edge Functions from Frontend
 
 ```typescript
-const { data, error } = await supabase.functions.invoke('function-name', {
-  body: { /* payload */ }
-})
+const { data, error } = await supabase.functions.invoke("function-name", {
+  body: {
+    /* payload */
+  },
+});
 ```
 
 ## Form Validation
@@ -236,12 +245,12 @@ All forms use React Hook Form + Zod schemas:
 ```typescript
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(6)
-})
+  password: z.string().min(6),
+});
 
 const form = useForm({
-  resolver: zodResolver(schema)
-})
+  resolver: zodResolver(schema),
+});
 ```
 
 ## Timezone Handling
@@ -258,48 +267,46 @@ Lesson times are stored in UTC and displayed in user's timezone:
 
 ```typescript
 // src/hooks/useExample.ts
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 export function useExample() {
   return useQuery({
-    queryKey: ['example'],
+    queryKey: ["example"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('table')
-        .select('*')
+      const { data, error } = await supabase.from("table").select("*");
 
-      if (error) throw error
-      return data
-    }
-  })
+      if (error) throw error;
+      return data;
+    },
+  });
 }
 ```
 
 ### Creating a New Mutation Hook
 
 ```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 export function useCreateExample() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: ExampleInput) => {
       const { data: result, error } = await supabase
-        .from('table')
+        .from("table")
         .insert(data)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return result
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['example'] })
-    }
-  })
+      queryClient.invalidateQueries({ queryKey: ["example"] });
+    },
+  });
 }
 ```
 
@@ -339,3 +346,7 @@ Database types are defined in `src/types/database.ts`. When schema changes:
 - **Confirmation**: Only students can confirm completed lessons
 - **Auto-Release**: Lessons auto-confirm 3 days after completion
 - **Teacher Onboarding**: Must have active Stripe Connect to receive payments
+
+## Other Constraitns
+
+- When asked to review the comments by coderabbit on my PR, always fetch the git URL and don't use the 'gh commands'
