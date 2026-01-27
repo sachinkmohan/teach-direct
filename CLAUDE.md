@@ -139,7 +139,7 @@ queryClient.invalidateQueries({ queryKey: ['packages'] })
 - `purchase-package` - Creates Stripe PaymentIntent
 - `confirm-lesson` - Releases funds to teacher (90/10 split)
 - `stripe-connect-onboard` - Initiates Stripe Connect onboarding
-- `auto-release-lessons` - Auto-confirms lessons after 7 days
+- `auto-release-lessons` - Auto-confirms lessons after 3 days
 
 ### Payment Processing
 
@@ -169,7 +169,7 @@ Status: "scheduled" (remaining_classes--)
     ↓
 Teacher marks complete → "pending_confirmation"
     ↓
-Student confirms OR auto-release after 7 days → "confirmed"
+Student confirms OR auto-release after 3 days → "confirmed"
     ↓
 Stripe transfer executed (90/10 split)
     ↓
@@ -323,5 +323,5 @@ Database types are defined in `src/types/database.ts`. When schema changes:
 - **Package Booking**: Students can only book if `remaining_classes > 0`
 - **Lesson Cancellation**: Can only cancel lessons with status "scheduled"
 - **Confirmation**: Only students can confirm completed lessons
-- **Auto-Release**: Lessons auto-confirm 7 days after completion
+- **Auto-Release**: Lessons auto-confirm 3 days after completion
 - **Teacher Onboarding**: Must have active Stripe Connect to receive payments

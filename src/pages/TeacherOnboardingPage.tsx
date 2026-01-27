@@ -18,7 +18,7 @@ const teacherProfileSchema = z.object({
   hourly_rate: z.string().min(1, 'Hourly rate is required').transform((val) => {
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 5) throw new Error('Minimum rate is €5')
+    if (num < 1) throw new Error('Minimum rate is €1')
     if (num > 500) throw new Error('Maximum rate is €500')
     return num
   }),
@@ -26,14 +26,14 @@ const teacherProfileSchema = z.object({
     if (!val || val === '') return undefined
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 20) throw new Error('Minimum is €20')
+    if (num < 1) throw new Error('Minimum is €1')
     return num
   }),
   package_10_rate: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined
     const num = Number(val)
     if (isNaN(num)) throw new Error('Must be a number')
-    if (num < 40) throw new Error('Minimum is €40')
+    if (num < 1) throw new Error('Minimum is €1')
     return num
   }),
 })

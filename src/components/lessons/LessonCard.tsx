@@ -11,6 +11,7 @@ interface LessonCardProps {
   onConfirm?: (lessonId: string) => void
   onDispute?: (lessonId: string) => void
   onJoin?: (meetingLink: string) => void
+  isConfirming?: boolean
 }
 
 type LessonStatus = 'scheduled' | 'completed' | 'pending_confirmation' | 'confirmed' | 'disputed' | 'cancelled'
@@ -33,7 +34,7 @@ const statusLabels: Record<LessonStatus, string> = {
   cancelled: 'Cancelled',
 }
 
-export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, onDispute, onJoin }: LessonCardProps) {
+export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, onDispute, onJoin, isConfirming = false }: LessonCardProps) {
   const scheduledDate = new Date(lesson.scheduled_at)
   const isUpcoming = isFuture(scheduledDate)
   const isPastLesson = isPast(scheduledDate)
@@ -150,8 +151,9 @@ export function LessonCard({ lesson, userRole, onCancel, onComplete, onConfirm, 
               <Button
                 onClick={() => onConfirm(lesson.id)}
                 className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+                disabled={isConfirming}
               >
-                Confirm Lesson
+                {isConfirming ? 'Confirming...' : 'Confirm Lesson'}
               </Button>
             )}
 
