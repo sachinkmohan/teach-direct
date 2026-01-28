@@ -70,7 +70,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">
-          Log in to TeachDirect
+          Log in to Learn From A Tutor
         </CardTitle>
         <CardDescription>
           Enter your email and password to access your account

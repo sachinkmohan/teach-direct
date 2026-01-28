@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TeachDirect is a peer-to-peer online tutoring marketplace built with React 19, TypeScript, and Vite. Students can browse teachers, purchase lesson packages via Stripe, and book lessons. Teachers receive payments through Stripe Connect with a 90/10 revenue split (90% to teacher, 10% platform fee).
+Learn From A Tutor is a peer-to-peer online tutoring marketplace built with React 19, TypeScript, and Vite. Students can browse teachers, purchase lesson packages via Stripe, and book lessons. Teachers receive payments through Stripe Connect with a 90/10 revenue split (90% to teacher, 10% platform fee).
 
 ## Development Commands
 

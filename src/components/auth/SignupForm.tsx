@@ -171,7 +171,7 @@ export function SignupForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
         <CardDescription>
-          Enter your details to get started with TeachDirect
+          Enter your details to get started with Learn From A Tutor
         </CardDescription>
       </CardHeader>
       <CardContent>
