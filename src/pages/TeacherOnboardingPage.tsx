@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ type TeacherProfileFormData = z.output<typeof teacherProfileSchema>
 
 export function TeacherOnboardingPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: userProfile, isLoading: userLoading } = useUserProfile()
   const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile()
   const { data: offerings = [], isLoading: offeringsLoading } = useMyTeacherOfferings()
@@ -36,6 +38,7 @@ export function TeacherOnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [offeringError, setOfferingError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const {
     register,
@@ -67,6 +70,7 @@ export function TeacherOnboardingPage() {
 
     setIsSubmitting(true)
     setError(null)
+    setSuccessMessage(null)
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -109,7 +113,15 @@ export function TeacherOnboardingPage() {
 
       if (profileError) throw profileError
 
-      navigate('/dashboard')
+      // Invalidate queries to refresh the UI with updated data
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] })
+      await queryClient.invalidateQueries({ queryKey: ['my-teacher-profile'] })
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] })
+
+      setSuccessMessage('Profile saved successfully!')
+
+      // Auto-dismiss success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile')
     } finally {
@@ -285,6 +297,25 @@ export function TeacherOnboardingPage() {
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Saving...' : 'Save Profile'}
               </Button>
+
+              {successMessage && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700 flex items-start gap-2">
+                  <svg
+                    className="h-5 w-5 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>{successMessage}</span>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
