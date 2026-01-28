@@ -152,7 +152,21 @@ INSERT INTO auth.identities (
 -- - public.teacher_profiles entry for John
 
 -- ============================================
--- 2. Update Teacher John's profile with rates
+-- 2. Update timezones for users
+-- ============================================
+
+-- Set teacher John's timezone to Berlin
+UPDATE public.users
+SET timezone = 'Europe/Berlin'
+WHERE id = '11111111-1111-1111-1111-111111111111';
+
+-- Set student Jane's timezone to Asia (using Asia/Kolkata as example)
+UPDATE public.users
+SET timezone = 'Asia/Kolkata'
+WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- ============================================
+-- 3. Update Teacher John's profile with rates
 -- ============================================
 
 -- Wait a moment for trigger to complete, then update the teacher profile
@@ -169,7 +183,7 @@ SET
 WHERE user_id = '11111111-1111-1111-1111-111111111111';
 
 -- ============================================
--- 3. Create default lesson offering for John (30 minutes)
+-- 4. Create default lesson offering for John (30 minutes)
 -- ============================================
 
 INSERT INTO public.teacher_lesson_offerings (
@@ -196,13 +210,14 @@ SET
   is_active = EXCLUDED.is_active;
 
 -- ============================================
--- Summary of Test Accounts
+-- 5. Summary of Test Accounts
 -- ============================================
 --
 -- TEACHER:
 --   Email: john@teacher.test
 --   Password: password123
 --   Name: John
+--   Timezone: Europe/Berlin
 --   Subject: Malayalam
 --   Legacy Rates (for backward compatibility):
 --     Hourly Rate: 5 EUR
@@ -216,4 +231,5 @@ SET
 --   Email: jane@student.test
 --   Password: password123
 --   Name: Jane
+--   Timezone: Asia/Kolkata
 --

@@ -17,7 +17,8 @@ export interface Lesson {
     | "awaiting_admin_approval"
     | "confirmed"
     | "disputed"
-    | "cancelled";
+    | "cancelled"
+    | "incomplete";
   notes: string | null;
   auto_release_at: string | null;
   created_at: string;
@@ -292,6 +293,32 @@ export function useCompleteLesson() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
+    },
+  });
+}
+
+// Mark a lesson as incomplete (teacher marks as no-show, refunds class to student)
+export function useIncompleteLesson() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async (lessonId: string) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.rpc("incomplete_lesson_atomic", {
+        p_lesson_id: lessonId,
+        p_teacher_id: user.id,
+      });
+
+      if (error) throw error;
+      return { success: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
       queryClient.invalidateQueries({ queryKey: ["my-teacher-profile"] });
     },
   });

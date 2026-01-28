@@ -74,7 +74,7 @@ export interface Lesson {
   scheduled_at: string
   duration_minutes: LessonDurationMinutes
   meeting_link: string | null
-  status: 'scheduled' | 'completed' | 'pending_confirmation' | 'awaiting_admin_approval' | 'confirmed' | 'disputed' | 'cancelled'
+  status: 'scheduled' | 'completed' | 'pending_confirmation' | 'awaiting_admin_approval' | 'confirmed' | 'disputed' | 'cancelled' | 'incomplete'
   auto_release_at: string | null
   created_at: string
   updated_at: string
