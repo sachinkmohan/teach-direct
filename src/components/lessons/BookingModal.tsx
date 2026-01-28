@@ -50,10 +50,10 @@ export function BookingModal({
   const selectedDateTime = useMemo(() => {
     if (!selectedDate || !selectedTime) return null
 
-    const [hours, minutes] = selectedTime.split(':').map(Number)
-    const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
-    return setMinutes(setHours(parsedDate, hours), minutes)
-  }, [selectedDate, selectedTime])
+    // Create ISO string in student's timezone, then convert to UTC
+    const dateTimeString = `${selectedDate}T${selectedTime}:00`
+    return fromZonedTime(dateTimeString, studentTimezone)
+  }, [selectedDate, selectedTime, studentTimezone])
 
   // Format the selected time for display (what user picked - no conversion needed)
   const formattedStudentTime = useMemo(() => {
@@ -81,12 +81,9 @@ export function BookingModal({
     }
 
     try {
-      const [hours, minutes] = selectedTime.split(':').map(Number)
-      const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
-      const localDateTime = setMinutes(setHours(parsedDate, hours), minutes)
-
-      // Convert from student's stored timezone to UTC for database storage
-      const scheduledAtUTC = fromZonedTime(localDateTime, studentTimezone)
+      // Create ISO string in student's timezone, then convert to UTC for database storage
+      const dateTimeString = `${selectedDate}T${selectedTime}:00`
+      const scheduledAtUTC = fromZonedTime(dateTimeString, studentTimezone)
 
       // NOTE: Past date validation is disabled to allow testing with historical dates
       // In production, uncomment this to prevent booking lessons in the past:

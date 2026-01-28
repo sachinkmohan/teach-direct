@@ -79,10 +79,10 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
                 {formatInTimeZone(scheduledDate, userTimezone, 'EEEE, MMMM d, yyyy')}
               </p>
               <p className="text-slate-600">
-                {formatInTimeZone(scheduledDate, userTimezone, 'h:mm a')} {getTimezoneAbbreviation(userTimezone)} ({lesson.duration_minutes} minutes)
+                {formatInTimeZone(scheduledDate, userTimezone, 'h:mm a')} {getTimezoneAbbreviation(userTimezone, scheduledDate)} ({lesson.duration_minutes} minutes)
               </p>
               <p className="text-sm text-slate-500">
-                {otherPersonLabel}'s time: {formatInTimeZone(scheduledDate, otherPersonTimezone, 'h:mm a')} {getTimezoneAbbreviation(otherPersonTimezone)}
+                {otherPersonLabel}'s time: {formatInTimeZone(scheduledDate, otherPersonTimezone, 'h:mm a')} {getTimezoneAbbreviation(otherPersonTimezone, scheduledDate)}
               </p>
             </div>
 

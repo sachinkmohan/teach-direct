@@ -20,6 +20,13 @@ export function getTimezoneAbbreviation(
   return tzPart?.value || timezone;
 }
 
+// Get a friendly timezone name (e.g., "America/New_York" -> "New York")
+export function getFriendlyTimezoneName(timezone: string): string {
+  const parts = timezone.split("/");
+  const city = parts[parts.length - 1].replace(/_/g, " ");
+  return city;
+}
+
 // Get timezone offset string (e.g., "GMT-8", "GMT+5:30")
 export function getTimezoneOffset(
   timezone: string,

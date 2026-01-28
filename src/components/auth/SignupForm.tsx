@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/authStore";
-import { getCommonTimezones, getUserTimezone, formatInTimezone, getTimezoneAbbreviation } from "@/hooks/useTimezone";
+import { getCommonTimezones, getUserTimezone, formatInTimezone, getTimezoneAbbreviation, getFriendlyTimezoneName } from "@/hooks/useTimezone";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -24,14 +24,6 @@ const signupSchema = z.object({
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
-
-// Helper to get a friendly timezone name
-function getFriendlyTimezoneName(timezone: string): string {
-  // Extract city name from timezone (e.g., "America/New_York" -> "New York")
-  const parts = timezone.split('/');
-  const city = parts[parts.length - 1].replace(/_/g, ' ');
-  return city;
-}
 
 export function SignupForm() {
   const { signup, error: authError } = useAuthStore();

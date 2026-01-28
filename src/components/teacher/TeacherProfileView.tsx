@@ -25,12 +25,28 @@ export function TeacherProfileView({
   const teacherTimezone = teacher.users?.timezone || 'UTC'
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Update current time every minute
+  // Update current time every minute, aligned to minute boundaries
   useEffect(() => {
-    const timer = setInterval(() => {
+    // Calculate milliseconds until next minute
+    const now = new Date()
+    const msUntilNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds())
+
+    let interval: ReturnType<typeof setInterval> | undefined
+
+    // Wait until next minute boundary
+    const timeout = setTimeout(() => {
       setCurrentTime(new Date())
-    }, 60000)
-    return () => clearInterval(timer)
+
+      // Then update every minute
+      interval = setInterval(() => {
+        setCurrentTime(new Date())
+      }, 60000)
+    }, msUntilNextMinute)
+
+    return () => {
+      clearTimeout(timeout)
+      if (interval) clearInterval(interval)
+    }
   }, [])
 
   // Find the selected offering or default to first offering, then fall back to legacy pricing

@@ -1,10 +1,11 @@
 -- Update handle_new_user() to sync timezone from auth metadata
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET search_path = public
     AS $$
 BEGIN
-  -- Log the signup attempt
-  RAISE LOG 'handle_new_user triggered for user: %, email: %', NEW.id, NEW.email;
+  -- Log the signup attempt (user ID only, no PII)
+  RAISE LOG 'handle_new_user triggered for user: %', NEW.id;
 
   -- Insert user metadata into public.users (now including timezone)
   INSERT INTO public.users (id, email, role, display_name, timezone)
