@@ -60,6 +60,14 @@ export function TeacherOnboardingPage() {
     }
   }, [teacherProfile, userProfile, reset])
 
+  // Auto-dismiss success message after 3 seconds with cleanup
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
+
   const onSubmit = async (data: TeacherProfileFormData) => {
     // Validate that at least one active offering exists
     const activeOfferings = offerings.filter(o => o.is_active)
@@ -119,9 +127,6 @@ export function TeacherOnboardingPage() {
       await queryClient.invalidateQueries({ queryKey: ['teachers'] })
 
       setSuccessMessage('Profile saved successfully!')
-
-      // Auto-dismiss success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile')
     } finally {
