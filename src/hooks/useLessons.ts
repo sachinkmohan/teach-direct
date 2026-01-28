@@ -29,11 +29,13 @@ export interface LessonWithDetails extends Lesson {
     id: string;
     email: string;
     display_name: string | null;
+    timezone: string;
   };
   student?: {
     id: string;
     email: string;
     display_name: string | null;
+    timezone: string;
   };
 }
 
@@ -54,7 +56,7 @@ async function fetchUserInfoForLessons(
   // Fetch user info
   const { data: users, error } = await supabase
     .from("users")
-    .select("id, email, display_name")
+    .select("id, email, display_name, timezone")
     .in("id", userIds);
 
   if (error) {
@@ -64,7 +66,7 @@ async function fetchUserInfoForLessons(
   // Create lookup map
   const userMap: Record<
     string,
-    { id: string; email: string; display_name: string | null }
+    { id: string; email: string; display_name: string | null; timezone: string }
   > = {};
   users?.forEach((u) => {
     userMap[u.id] = u;

@@ -84,7 +84,7 @@ export function HomePage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Start Learning?</h2>
           <p className="text-xl text-slate-300 mb-8">
-            Join thousands of students learning with TeachDirect
+            Join thousands of students learning with Learn From A Tutor
           </p>
           <Link to="/signup">
             <Button size="lg" variant="outline" className="bg-white text-slate-900 hover:bg-slate-100">

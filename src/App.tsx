@@ -13,6 +13,7 @@ import {
   TeacherOnboardingPage,
   LessonsPage,
   AdminDashboardPage,
+  SettingsPage,
 } from "@/pages"
 import { AdminRoute } from "@/components/AdminRoute"
 import { useAuthStore } from "@/stores/authStore"
@@ -102,6 +103,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <LessonsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

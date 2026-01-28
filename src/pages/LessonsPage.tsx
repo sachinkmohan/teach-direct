@@ -7,7 +7,7 @@ import { LessonCard } from '@/components/lessons/LessonCard'
 import { DisputeModal } from '@/components/lessons/DisputeModal'
 import { useLessons, useCancelLesson, useCompleteLesson, useConfirmLesson, useDisputeLesson } from '@/hooks/useLessons'
 import { useUserProfile } from '@/hooks/useUser'
-import { useTimezone } from '@/hooks/useTimezone'
+import { getTimezoneAbbreviation } from '@/hooks/useTimezone'
 
 type TabType = 'upcoming' | 'past' | 'all'
 
@@ -22,7 +22,10 @@ export function LessonsPage() {
   const completeLesson = useCompleteLesson()
   const confirmLesson = useConfirmLesson()
   const disputeLesson = useDisputeLesson()
-  const { userTimezone, timezoneAbbr } = useTimezone()
+
+  // Use stored timezone from user profile, not browser timezone
+  const userTimezone = userProfile?.timezone || 'UTC'
+  const timezoneAbbr = getTimezoneAbbreviation(userTimezone)
 
   const userRole = userProfile?.role === 'teacher' ? 'teacher' : 'student'
 
@@ -105,10 +108,6 @@ export function LessonsPage() {
   const handleDisputeSubmit = async (lessonId: string, reason: string) => {
     await disputeLesson.mutateAsync({ lessonId, reason })
     setDisputeModalLessonId(null)
-  }
-
-  const handleJoin = (meetingLink: string) => {
-    window.open(meetingLink, '_blank', 'noopener,noreferrer')
   }
 
   if (isLoading) {
@@ -218,7 +217,6 @@ export function LessonsPage() {
                 onComplete={handleComplete}
                 onConfirm={handleConfirm}
                 onDispute={handleDispute}
-                onJoin={handleJoin}
                 isConfirming={confirmingLessonId === lesson.id}
               />
             ))}

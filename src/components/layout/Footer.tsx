@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-semibold text-slate-900 mb-4">TeachDirect</h3>
+            <h3 className="font-semibold text-slate-900 mb-4">Learn From A Tutor</h3>
             <p className="text-sm text-slate-600">
               Connect directly with teachers for personalized online lessons.
             </p>
@@ -63,7 +63,7 @@ export function Footer() {
 
         <div className="border-t border-slate-200 mt-8 pt-8 text-center">
           <p className="text-sm text-slate-600">
-            &copy; {new Date().getFullYear()} TeachDirect. All rights reserved.
+            &copy; {new Date().getFullYear()} Learn From A Tutor. All rights reserved.
           </p>
         </div>
       </div>
