@@ -100,6 +100,9 @@ export function TeacherOnboardingPage() {
       const primaryOffering = activeOfferings[0]
 
       // Upsert teacher profile
+      // Note: stripe_connect_status and balances are NOT included here
+      // - stripe_connect_status defaults to 'pending' on insert, updated by Stripe webhook/redirect
+      // - balances are managed by transaction operations only
       const { error: profileError } = await supabase
         .from('teacher_profiles')
         .upsert({
@@ -111,9 +114,6 @@ export function TeacherOnboardingPage() {
           hourly_rate: primaryOffering.single_rate,
           package_5_rate: primaryOffering.package_5_rate,
           package_10_rate: primaryOffering.package_10_rate,
-          stripe_connect_status: 'pending',
-          available_balance: 0,
-          pending_balance: 0,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id',
