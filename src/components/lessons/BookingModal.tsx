@@ -62,14 +62,12 @@ export function BookingModal({
     return format(parse(selectedTime, 'HH:mm', new Date()), 'h:mm a')
   }, [selectedTime])
 
-  // Convert to UTC first (treating selectedDateTime as student's local time), then format in teacher's timezone
+  // Format the UTC datetime in teacher's timezone for display
   const formattedTeacherTime = useMemo(() => {
     if (!selectedDateTime) return null
-    // Convert from student's timezone to UTC
-    const utcDate = fromZonedTime(selectedDateTime, studentTimezone)
-    // Format the UTC date in teacher's timezone
-    return formatInTimezone(utcDate, teacherTimezone, 'h:mm a')
-  }, [selectedDateTime, studentTimezone, teacherTimezone])
+    // selectedDateTime is already UTC, just format it in teacher's timezone
+    return formatInTimezone(selectedDateTime, teacherTimezone, 'h:mm a')
+  }, [selectedDateTime, teacherTimezone])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -191,17 +189,17 @@ export function BookingModal({
           </div>
 
           {/* Dual Timezone Display */}
-          {formattedStudentTime && formattedTeacherTime && (
+          {formattedStudentTime && formattedTeacherTime && selectedDateTime && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-1">
               <p className="text-sm text-blue-800">
                 <span className="font-medium">Your time:</span>{' '}
                 {formattedStudentTime}{' '}
-                {getTimezoneAbbreviation(studentTimezone)}
+                {getTimezoneAbbreviation(studentTimezone, selectedDateTime)}
               </p>
               <p className="text-sm text-blue-700">
                 <span className="font-medium">Teacher's time:</span>{' '}
                 {formattedTeacherTime}{' '}
-                {getTimezoneAbbreviation(teacherTimezone)}
+                {getTimezoneAbbreviation(teacherTimezone, selectedDateTime)}
               </p>
             </div>
           )}
