@@ -12,6 +12,7 @@ interface LessonCardProps {
   userTimezone: string
   onCancel?: (lessonId: string) => void
   onComplete?: (lessonId: string) => void
+  onIncomplete?: (lessonId: string) => void
   onConfirm?: (lessonId: string) => void
   onDispute?: (lessonId: string) => void
   isConfirming?: boolean
@@ -27,6 +28,7 @@ const statusColors: Record<LessonStatus, string> = {
   confirmed: 'bg-green-100 text-green-800',
   disputed: 'bg-red-100 text-red-800',
   cancelled: 'bg-gray-100 text-gray-500',
+  incomplete: 'bg-orange-100 text-orange-800',
 }
 
 const statusLabels: Record<LessonStatus, string> = {
@@ -37,14 +39,16 @@ const statusLabels: Record<LessonStatus, string> = {
   confirmed: 'Confirmed',
   disputed: 'Disputed',
   cancelled: 'Cancelled',
+  incomplete: 'Incomplete',
 }
 
-export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplete, onConfirm, onDispute, isConfirming = false }: LessonCardProps) {
+export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplete, onIncomplete, onConfirm, onDispute, isConfirming = false }: LessonCardProps) {
   const scheduledDate = new Date(lesson.scheduled_at)
   const isUpcoming = isFuture(scheduledDate)
   const isPastLesson = isPast(scheduledDate)
   const canCancel = isUpcoming && lesson.status === 'scheduled'
   const canComplete = isPastLesson && lesson.status === 'scheduled' && userRole === 'teacher'
+  const canIncomplete = isPastLesson && lesson.status === 'scheduled' && userRole === 'teacher'
   const canConfirm = lesson.status === 'pending_confirmation' && userRole === 'student'
   const canDispute = lesson.status === 'pending_confirmation' && userRole === 'student'
 
@@ -58,7 +62,7 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
   const statusLabel = statusLabels[status] ?? status
 
   return (
-    <Card className={lesson.status === 'cancelled' ? 'opacity-60' : ''}>
+    <Card className={lesson.status === 'cancelled' || lesson.status === 'incomplete' ? 'opacity-60' : ''}>
       <CardContent className="pt-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Lesson Info */}
@@ -132,6 +136,16 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
                 className="w-full md:w-auto"
               >
                 Mark Complete
+              </Button>
+            )}
+
+            {canIncomplete && onIncomplete && (
+              <Button
+                onClick={() => onIncomplete(lesson.id)}
+                variant="outline"
+                className="w-full md:w-auto text-orange-600 hover:text-orange-700 border-orange-300"
+              >
+                Mark Incomplete
               </Button>
             )}
 

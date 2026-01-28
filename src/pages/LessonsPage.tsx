@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { LessonCard } from '@/components/lessons/LessonCard'
 import { DisputeModal } from '@/components/lessons/DisputeModal'
-import { useLessons, useCancelLesson, useCompleteLesson, useConfirmLesson, useDisputeLesson } from '@/hooks/useLessons'
+import { useLessons, useCancelLesson, useCompleteLesson, useIncompleteLesson, useConfirmLesson, useDisputeLesson } from '@/hooks/useLessons'
 import { useUserProfile } from '@/hooks/useUser'
 import { getTimezoneAbbreviation } from '@/hooks/useTimezone'
 
@@ -20,6 +20,7 @@ export function LessonsPage() {
   const { data: userProfile } = useUserProfile()
   const cancelLesson = useCancelLesson()
   const completeLesson = useCompleteLesson()
+  const incompleteLesson = useIncompleteLesson()
   const confirmLesson = useConfirmLesson()
   const disputeLesson = useDisputeLesson()
 
@@ -74,11 +75,24 @@ export function LessonsPage() {
   }
 
   const handleComplete = async (lessonId: string) => {
-    try {
-      await completeLesson.mutateAsync(lessonId)
-    } catch (err) {
-      console.error('Failed to mark lesson complete:', err)
-      alert(err instanceof Error ? err.message : 'Failed to mark lesson as complete. Please try again.')
+    if (window.confirm('Are you sure you want to mark this lesson as complete? The student will be notified to confirm.')) {
+      try {
+        await completeLesson.mutateAsync(lessonId)
+      } catch (err) {
+        console.error('Failed to mark lesson complete:', err)
+        alert(err instanceof Error ? err.message : 'Failed to mark lesson as complete. Please try again.')
+      }
+    }
+  }
+
+  const handleIncomplete = async (lessonId: string) => {
+    if (window.confirm('This lesson will be marked as incomplete and the class credit will be refunded to the student. Are you sure?')) {
+      try {
+        await incompleteLesson.mutateAsync(lessonId)
+      } catch (err) {
+        console.error('Failed to mark lesson incomplete:', err)
+        alert(err instanceof Error ? err.message : 'Failed to mark lesson as incomplete. Please try again.')
+      }
     }
   }
 
@@ -215,6 +229,7 @@ export function LessonsPage() {
                 userTimezone={userTimezone}
                 onCancel={handleCancel}
                 onComplete={handleComplete}
+                onIncomplete={handleIncomplete}
                 onConfirm={handleConfirm}
                 onDispute={handleDispute}
                 isConfirming={confirmingLessonId === lesson.id}
