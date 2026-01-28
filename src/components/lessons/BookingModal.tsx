@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { format, addDays, setHours, setMinutes, parse } from 'date-fns'
+import { format, addDays, setHours, setMinutes, parse, isBefore } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,17 +30,16 @@ export function BookingModal({
 
   const bookLesson = useBookLesson()
 
-  // Generate available dates (7 days ago + today + next 29 days = 37 total days for testing)
-  const availableDates = Array.from({ length: 37 }, (_, i) => {
-    const date = addDays(new Date(), i - 7) // Start from 7 days ago
+  // Generate available dates (tomorrow + next 29 days = 30 total days)
+  const availableDates = Array.from({ length: 30 }, (_, i) => {
+    const date = addDays(new Date(), i + 1) // Start from tomorrow
     return format(date, 'yyyy-MM-dd')
   })
 
-  // Generate time slots (9 AM to 9 PM, every 30 minutes)
+  // Generate time slots (24 hours, every 30 minutes)
   const timeSlots = []
-  for (let hour = 9; hour <= 21; hour++) {
+  for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
-      if (hour === 21 && minute > 0) break
       const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
       timeSlots.push(time)
     }
@@ -83,12 +82,11 @@ export function BookingModal({
       const dateTimeString = `${selectedDate}T${selectedTime}:00`
       const scheduledAtUTC = fromZonedTime(dateTimeString, studentTimezone)
 
-      // NOTE: Past date validation is disabled to allow testing with historical dates
-      // In production, uncomment this to prevent booking lessons in the past:
-      // if (isBefore(scheduledAtUTC, new Date())) {
-      //   setError('Please select a future date and time')
-      //   return
-      // }
+      // Validate that the selected time is in the future
+      if (isBefore(scheduledAtUTC, new Date())) {
+        setError('Please select a future date and time')
+        return
+      }
 
       await bookLesson.mutateAsync({
         packageId: pkg.id,
