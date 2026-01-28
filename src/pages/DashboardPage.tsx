@@ -13,6 +13,7 @@ import { TransactionHistory } from "@/components/wallet/TransactionHistory"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
+import { formatInTimezone, getTimezoneAbbreviation } from "@/hooks/useTimezone"
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -30,38 +31,51 @@ export function DashboardPage() {
   const [connectingStripe, setConnectingStripe] = useState(false)
   const [bookingPackage, setBookingPackage] = useState<Package | null>(null)
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
+  const [teacherTimezones, setTeacherTimezones] = useState<Record<string, string>>({})
   const { data: transactions, isLoading: transactionsLoading } = useTransactions()
   const { data: monthlyEarnings } = useMonthlyEarnings()
+  const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Fetch teacher names for packages
+  // Fetch teacher names and timezones for packages
   useEffect(() => {
-    const fetchTeacherNames = async () => {
+    const fetchTeacherData = async () => {
       if (!packages || packages.length === 0) return
 
       const teacherIds = [...new Set(packages.map(p => p.teacher_id))]
       const { data, error } = await supabase
         .from('users')
-        .select('id, display_name, email')
+        .select('id, display_name, email, timezone')
         .in('id', teacherIds)
 
       if (error) {
-        console.error('Failed to fetch teacher names:', error)
+        console.error('Failed to fetch teacher data:', error)
         return
       }
 
       if (data) {
         const names: Record<string, string> = {}
+        const timezones: Record<string, string> = {}
         data.forEach(u => {
           names[u.id] = u.display_name || u.email
+          timezones[u.id] = u.timezone || 'UTC'
         })
         setTeacherNames(names)
+        setTeacherTimezones(timezones)
       } else {
         console.warn('No teacher data returned')
       }
     }
-    fetchTeacherNames()
+    fetchTeacherData()
   }, [packages])
   const [stripeMessage, setStripeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Update current time every minute for the clock display
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const isTeacher = userProfile?.role === 'teacher'
   const hasCompletedProfile = teacherProfile?.hourly_rate != null
@@ -211,14 +225,47 @@ export function DashboardPage() {
   return (
     <div className="bg-slate-50 min-h-[calc(100vh-4rem)]">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-600 mt-2">
-            Welcome back, {userProfile?.display_name || user?.email}
-          </p>
-          <span className="inline-block mt-2 px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded-full capitalize">
-            {userProfile?.role || 'user'}
-          </span>
+        <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+            <p className="text-slate-600 mt-2">
+              Welcome back, {userProfile?.display_name || user?.email}
+            </p>
+            <span className="inline-block mt-2 px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded-full capitalize">
+              {userProfile?.role || 'user'}
+            </span>
+          </div>
+          <div className="flex flex-col items-start md:items-end gap-3">
+            <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
+              <svg
+                className="w-4 h-4 text-slate-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base font-semibold text-slate-900">
+                  {formatInTimezone(currentTime, userProfile?.timezone || 'UTC', 'h:mm a')}
+                </span>
+                <span className="text-xs font-medium text-slate-600">
+                  {getTimezoneAbbreviation(userProfile?.timezone || 'UTC')}
+                </span>
+              </div>
+            </div>
+            <Link
+              to="/settings"
+              className="text-sm text-slate-500 hover:text-slate-700 underline"
+            >
+              Settings
+            </Link>
+          </div>
         </div>
 
         {/* Stripe Connect Message */}
@@ -590,6 +637,8 @@ export function DashboardPage() {
           <BookingModal
             package={bookingPackage}
             teacherName={teacherNames[bookingPackage.teacher_id] || 'Teacher'}
+            teacherTimezone={teacherTimezones[bookingPackage.teacher_id] || 'UTC'}
+            studentTimezone={userProfile?.timezone || 'UTC'}
             onSuccess={() => {
               setBookingPackage(null)
               // Refresh will happen automatically via React Query invalidation

@@ -2,6 +2,7 @@ import { isPast, isFuture } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { getTimezoneAbbreviation } from '@/hooks/useTimezone'
 import type { LessonWithDetails } from '@/hooks/useLessons'
 import type { Lesson } from '@/types/database'
 
@@ -13,7 +14,6 @@ interface LessonCardProps {
   onComplete?: (lessonId: string) => void
   onConfirm?: (lessonId: string) => void
   onDispute?: (lessonId: string) => void
-  onJoin?: (meetingLink: string) => void
   isConfirming?: boolean
 }
 
@@ -39,7 +39,7 @@ const statusLabels: Record<LessonStatus, string> = {
   cancelled: 'Cancelled',
 }
 
-export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplete, onConfirm, onDispute, onJoin, isConfirming = false }: LessonCardProps) {
+export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplete, onConfirm, onDispute, isConfirming = false }: LessonCardProps) {
   const scheduledDate = new Date(lesson.scheduled_at)
   const isUpcoming = isFuture(scheduledDate)
   const isPastLesson = isPast(scheduledDate)
@@ -50,6 +50,7 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
 
   const otherPerson = userRole === 'student' ? lesson.teacher : lesson.student
   const otherPersonLabel = userRole === 'student' ? 'Teacher' : 'Student'
+  const otherPersonTimezone = otherPerson?.timezone || 'UTC'
 
   // Safe status access with fallback
   const status = lesson.status as LessonStatus
@@ -78,27 +79,16 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
                 {formatInTimeZone(scheduledDate, userTimezone, 'EEEE, MMMM d, yyyy')}
               </p>
               <p className="text-slate-600">
-                {formatInTimeZone(scheduledDate, userTimezone, 'h:mm a')} ({lesson.duration_minutes} minutes)
+                {formatInTimeZone(scheduledDate, userTimezone, 'h:mm a')} {getTimezoneAbbreviation(userTimezone)} ({lesson.duration_minutes} minutes)
+              </p>
+              <p className="text-sm text-slate-500">
+                {otherPersonLabel}'s time: {formatInTimeZone(scheduledDate, otherPersonTimezone, 'h:mm a')} {getTimezoneAbbreviation(otherPersonTimezone)}
               </p>
             </div>
 
             <p className="text-sm text-slate-600">
               {otherPersonLabel}: <span className="font-medium">{otherPerson?.display_name || otherPerson?.email || 'Unknown'}</span>
             </p>
-
-            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && (
-              <p className="text-sm">
-                <span className="text-slate-600">Meeting: </span>
-                <a
-                  href={lesson.meeting_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Join Video Call
-                </a>
-              </p>
-            )}
 
             {lesson.notes && (
               <p className="text-sm text-slate-600">
@@ -135,15 +125,6 @@ export function LessonCard({ lesson, userRole, userTimezone, onCancel, onComplet
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
-            {lesson.meeting_link && lesson.meeting_link.startsWith('http') && isUpcoming && lesson.status === 'scheduled' && (
-              <Button
-                onClick={() => onJoin?.(lesson.meeting_link!)}
-                className="w-full md:w-auto"
-              >
-                Join Meeting
-              </Button>
-            )}
-
             {canComplete && onComplete && (
               <Button
                 onClick={() => onComplete(lesson.id)}

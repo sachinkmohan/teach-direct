@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PricingDisplay } from './PricingDisplay'
 import { DurationSelector } from './DurationSelector'
+import { formatInTimezone, getTimezoneAbbreviation } from '@/hooks/useTimezone'
 import type { TeacherWithUser } from '@/hooks/useTeachers'
 import type { TeacherLessonOffering } from '@/types/database'
 
@@ -20,6 +22,16 @@ export function TeacherProfileView({
   onPurchase,
 }: TeacherProfileViewProps) {
   const displayName = teacher.users?.display_name || teacher.users?.email?.split('@')[0] || 'Teacher'
+  const teacherTimezone = teacher.users?.timezone || 'UTC'
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Find the selected offering or default to first offering, then fall back to legacy pricing
   const selectedOffering = selectedDuration
@@ -59,6 +71,10 @@ export function TeacherProfileView({
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-slate-900">{displayName}</h1>
               <p className="text-slate-500 mt-1">{teacher.users?.email}</p>
+              <p className="text-slate-500 text-sm mt-1">
+                Local time: {formatInTimezone(currentTime, teacherTimezone, 'h:mm a')}{' '}
+                {getTimezoneAbbreviation(teacherTimezone)}
+              </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {teacher.subjects?.map((subject) => (

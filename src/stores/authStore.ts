@@ -12,7 +12,7 @@ interface AuthState {
   setUser: (user: User | null) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
-  signup: (email: string, password: string, role: 'student' | 'teacher') => Promise<void>
+  signup: (email: string, password: string, role: 'student' | 'teacher', displayName: string, timezone: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   initialize: () => Promise<void>
@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
 
-  signup: async (email: string, password: string, role: 'student' | 'teacher') => {
+  signup: async (email: string, password: string, role: 'student' | 'teacher', displayName: string, timezone: string) => {
     set({ loading: true, error: null })
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -36,6 +36,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         options: {
           data: {
             role,
+            display_name: displayName,
+            timezone,
           },
         },
       })

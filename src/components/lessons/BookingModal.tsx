@@ -1,22 +1,31 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, addDays, setHours, setMinutes, parse } from 'date-fns'
+import { fromZonedTime } from 'date-fns-tz'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBookLesson } from '@/hooks/useLessons'
+import { formatInTimezone, getTimezoneAbbreviation } from '@/hooks/useTimezone'
 import type { Package } from '@/hooks/usePackages'
 
 interface BookingModalProps {
   package: Package
   teacherName: string
+  teacherTimezone: string
+  studentTimezone: string
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }: BookingModalProps) {
+export function BookingModal({
+  package: pkg,
+  teacherName,
+  teacherTimezone,
+  studentTimezone,
+  onSuccess,
+  onCancel
+}: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
-  const [meetingLink, setMeetingLink] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const bookLesson = useBookLesson()
@@ -37,6 +46,31 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
     }
   }
 
+  // Calculate the selected datetime in student's timezone and convert to UTC/teacher's timezone
+  const selectedDateTime = useMemo(() => {
+    if (!selectedDate || !selectedTime) return null
+
+    const [hours, minutes] = selectedTime.split(':').map(Number)
+    const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
+    return setMinutes(setHours(parsedDate, hours), minutes)
+  }, [selectedDate, selectedTime])
+
+  // Format the selected time for display (what user picked - no conversion needed)
+  const formattedStudentTime = useMemo(() => {
+    if (!selectedTime) return null
+    // Parse the HH:mm format and format as h:mm a
+    return format(parse(selectedTime, 'HH:mm', new Date()), 'h:mm a')
+  }, [selectedTime])
+
+  // Convert to UTC first (treating selectedDateTime as student's local time), then format in teacher's timezone
+  const formattedTeacherTime = useMemo(() => {
+    if (!selectedDateTime) return null
+    // Convert from student's timezone to UTC
+    const utcDate = fromZonedTime(selectedDateTime, studentTimezone)
+    // Format the UTC date in teacher's timezone
+    return formatInTimezone(utcDate, teacherTimezone, 'h:mm a')
+  }, [selectedDateTime, studentTimezone, teacherTimezone])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -46,20 +80,17 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       return
     }
 
-    // Validate meeting link if provided
-    if (meetingLink && !meetingLink.startsWith('http')) {
-      setError('Please enter a valid meeting link (starting with http)')
-      return
-    }
-
     try {
       const [hours, minutes] = selectedTime.split(':').map(Number)
       const parsedDate = parse(selectedDate, 'yyyy-MM-dd', new Date())
-      const scheduledAt = setMinutes(setHours(parsedDate, hours), minutes)
+      const localDateTime = setMinutes(setHours(parsedDate, hours), minutes)
+
+      // Convert from student's stored timezone to UTC for database storage
+      const scheduledAtUTC = fromZonedTime(localDateTime, studentTimezone)
 
       // NOTE: Past date validation is disabled to allow testing with historical dates
       // In production, uncomment this to prevent booking lessons in the past:
-      // if (isBefore(scheduledAt, new Date())) {
+      // if (isBefore(scheduledAtUTC, new Date())) {
       //   setError('Please select a future date and time')
       //   return
       // }
@@ -67,8 +98,7 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       await bookLesson.mutateAsync({
         packageId: pkg.id,
         teacherId: pkg.teacher_id,
-        scheduledAt,
-        meetingLink: meetingLink || undefined,
+        scheduledAt: scheduledAtUTC,
       })
 
       onSuccess()
@@ -88,6 +118,37 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Timezone Booking Guide */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-2">
+            <div className="flex items-start gap-2">
+              <svg
+                className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-blue-900">
+                  After Google Calendar Booking
+                </p>
+                <p className="text-sm text-blue-800">
+                  Enter the <strong>same date and time</strong> you selected when booking on your teacher's Google Calendar.
+                  Use your local time—we'll automatically show both your time and your teacher's time.
+                </p>
+                <div className="bg-white/50 rounded border border-blue-200 p-2 text-xs text-blue-700">
+                  <strong>Example:</strong> If you booked for 3:00 PM on Google Calendar, enter 3:00 PM here.
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Package Info */}
           <div className="bg-slate-50 p-4 rounded-md space-y-1">
             <p className="text-sm text-slate-600">
@@ -130,24 +191,29 @@ export function BookingModal({ package: pkg, teacherName, onSuccess, onCancel }:
                 </option>
               ))}
             </select>
-            <p className="text-xs text-slate-500">Times shown in your local timezone</p>
           </div>
 
-          {/* Meeting Link */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Meeting Link (Optional)
-            </label>
-            <Input
-              type="url"
-              placeholder="https://meet.google.com/xxx-xxx-xxx"
-              value={meetingLink}
-              onChange={(e) => setMeetingLink(e.target.value)}
-            />
+          {/* Dual Timezone Display */}
+          {formattedStudentTime && formattedTeacherTime && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-1">
+              <p className="text-sm text-blue-800">
+                <span className="font-medium">Your time:</span>{' '}
+                {formattedStudentTime}{' '}
+                {getTimezoneAbbreviation(studentTimezone)}
+              </p>
+              <p className="text-sm text-blue-700">
+                <span className="font-medium">Teacher's time:</span>{' '}
+                {formattedTeacherTime}{' '}
+                {getTimezoneAbbreviation(teacherTimezone)}
+              </p>
+            </div>
+          )}
+
+          {!formattedStudentTime && (
             <p className="text-xs text-slate-500">
-              Add a Google Meet, Zoom, or other video call link
+              Times shown in your local timezone ({getTimezoneAbbreviation(studentTimezone)})
             </p>
-          </div>
+          )}
 
           {/* Error Message */}
           {error && (
