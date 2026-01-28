@@ -1,5 +1,6 @@
 -- Add packages for Jane (student) with John (teacher)
 -- Run with: psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f add-package.sql
+-- Uses fixed UUIDs to be idempotent (safe to re-run)
 
 -- 1. 5-class package (30 minutes)
 INSERT INTO public.packages (
@@ -15,7 +16,7 @@ INSERT INTO public.packages (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',  -- Fixed UUID
   '22222222-2222-2222-2222-222222222222',  -- Jane (student)
   '11111111-1111-1111-1111-111111111111',  -- John (teacher)
   5,
@@ -26,7 +27,8 @@ INSERT INTO public.packages (
   'active',
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- 2. 10-class package (45 minutes)
 INSERT INTO public.packages (
@@ -42,7 +44,7 @@ INSERT INTO public.packages (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',  -- Fixed UUID
   '22222222-2222-2222-2222-222222222222',  -- Jane (student)
   '11111111-1111-1111-1111-111111111111',  -- John (teacher)
   10,
@@ -53,7 +55,8 @@ INSERT INTO public.packages (
   'active',
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- 3. Single lesson (30 minutes)
 INSERT INTO public.packages (
@@ -69,7 +72,7 @@ INSERT INTO public.packages (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',  -- Fixed UUID
   '22222222-2222-2222-2222-222222222222',  -- Jane (student)
   '11111111-1111-1111-1111-111111111111',  -- John (teacher)
   1,
@@ -80,7 +83,8 @@ INSERT INTO public.packages (
   'active',
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- 4. Single lesson (60 minutes)
 INSERT INTO public.packages (
@@ -96,7 +100,7 @@ INSERT INTO public.packages (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
+  'dddddddd-dddd-dddd-dddd-dddddddddddd',  -- Fixed UUID
   '22222222-2222-2222-2222-222222222222',  -- Jane (student)
   '11111111-1111-1111-1111-111111111111',  -- John (teacher)
   1,
@@ -107,7 +111,8 @@ INSERT INTO public.packages (
   'active',
   NOW(),
   NOW()
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Confirm packages were created
 SELECT

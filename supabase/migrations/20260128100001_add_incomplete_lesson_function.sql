@@ -45,6 +45,10 @@ BEGIN
   FROM public.packages
   WHERE id = v_package_id;
 
+  IF v_price_per_class IS NULL THEN
+    RAISE EXCEPTION 'Package not found for lesson';
+  END IF;
+
   -- Update lesson status to incomplete
   UPDATE public.lessons
   SET
