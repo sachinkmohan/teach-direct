@@ -22,6 +22,10 @@ npm run lint
 npm run preview
 ```
 
+## Internal Docs Site
+
+An internal VitePress doc site lives in `docs/`. To update docs, edit the relevant `.md` file in that folder. When adding a new page, also add it to the sidebar in `docs/.vitepress/config.ts`.
+
 ## Environment Configuration
 
 Copy `.env.example` to `.env.local` and configure:
