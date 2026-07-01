@@ -10,18 +10,26 @@ export function TeacherStudentsView() {
 
   useEffect(() => {
     if (!packages || packages.length === 0) return
+    let cancelled = false
 
     const studentIds = [...new Set(packages.map(p => p.student_id))]
     supabase
       .from('users')
       .select('id, display_name, email')
       .in('id', studentIds)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('Failed to fetch student data:', error)
+          return
+        }
         if (!data) return
         const names: Record<string, string> = {}
         data.forEach(u => { names[u.id] = u.display_name || u.email })
         setStudentNames(names)
       })
+
+    return () => { cancelled = true }
   }, [packages])
 
   return (

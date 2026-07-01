@@ -114,7 +114,7 @@ Use card `4000 0000 0000 9995`. After clicking **Purchase Package**, the payment
 
 **Teacher must have at least one active offering.** If the teacher profile has no active lesson offerings, the purchase button won't appear. Log in as the teacher, go to their onboarding page (`/teacher/onboarding`), and add at least one duration with pricing.
 
-**Teacher does not need Stripe Connect to complete.** The package purchase goes through Stripe directly (student → platform). The teacher only needs a connected Stripe account when a lesson is *confirmed* and funds are released. You can buy packages locally without setting up Connect.
+**Teacher must have Stripe Connect set up before a package can be purchased.** The `purchase-package` Edge Function checks for a `stripe_connect_id` on the teacher profile and returns a 400 if it is missing. Complete the teacher's Stripe Connect onboarding first, then test the purchase flow.
 
 **Always use test keys locally.** If you accidentally copy a `pk_live_` key into `.env.local`, the Stripe form will attempt real charges. Confirm:
 ```bash
