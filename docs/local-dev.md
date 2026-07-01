@@ -215,17 +215,19 @@ npm run local:stop
 ## Reclaiming Disk Space
 
 ```bash
-# Quick cleanup (~2–5 GB recovered)
-npx supabase stop --no-backup
-rm -rf .supabase/
+# Check how much space Docker is using
+docker system df
 
 # Stop Supabase and remove this project's local data (~2–5 GB)
 npm run local:cleanup
 # or: npx supabase stop --no-backup && rm -rf .supabase/
 
-# Check how much space Docker is using
-docker system df
+# Nuclear option: remove ALL Docker images, containers, volumes, and build cache
+# ⚠️  This affects every Docker project on your machine, not just Supabase
+docker system prune -a --volumes
 ```
+
+> **When to use `docker system prune -a --volumes`**: if you're critically low on disk space and the project-scoped cleanup above isn't enough. After running it, your next `npx supabase start` will re-pull all images (5–10 min).
 
 ---
 
