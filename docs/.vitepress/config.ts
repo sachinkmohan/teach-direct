@@ -34,6 +34,12 @@ export default defineConfig({
           { text: 'Common Patterns', link: '/patterns' },
         ],
       },
+      {
+        text: 'Testing',
+        items: [
+          { text: 'Stripe Payments (Local)', link: '/testing-stripe-payments' },
+        ],
+      },
     ],
   },
 })

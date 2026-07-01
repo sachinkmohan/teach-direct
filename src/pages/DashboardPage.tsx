@@ -10,6 +10,7 @@ import { usePackages, type Package } from "@/hooks/usePackages"
 import { useTransactions, useMonthlyEarnings } from "@/hooks/useTransactions"
 import { BookingModal } from "@/components/lessons/BookingModal"
 import { TransactionHistory } from "@/components/wallet/TransactionHistory"
+import { TeacherStudentsView } from "@/components/teacher/TeacherStudentsView"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
@@ -590,6 +591,13 @@ export function DashboardPage() {
             </>
           )}
         </div>
+
+        {/* Student Packages */}
+        {isTeacher && (
+          <div className="mt-8">
+            <TeacherStudentsView />
+          </div>
+        )}
 
         {/* Transaction History */}
         <div className="mt-8">

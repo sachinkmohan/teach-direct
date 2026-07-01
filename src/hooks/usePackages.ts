@@ -49,7 +49,9 @@ export function useTeacherPackages() {
         .from('packages')
         .select('*')
         .eq('teacher_id', user.id)
-        .order('created_at', { ascending: false })
+        .eq('status', 'active')
+        .gt('remaining_classes', 0)
+        .order('remaining_classes', { ascending: true })
 
       if (error) throw error
       return data as Package[]
