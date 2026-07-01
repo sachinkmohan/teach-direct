@@ -26,6 +26,8 @@ export function useExample() {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
+type ExampleInput = { name: string }
+
 export function useCreateExample() {
   const queryClient = useQueryClient()
 

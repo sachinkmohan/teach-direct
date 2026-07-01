@@ -2,7 +2,7 @@
 
 ## Status Flow
 
-```
+```text
 Package Purchase → remaining_classes set
         ↓
   book_lesson_atomic

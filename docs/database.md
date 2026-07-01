@@ -72,6 +72,7 @@ These are PostgreSQL functions called via `supabase.rpc()`. They run atomically 
 | `book_lesson_atomic` | Books lesson + decrements `remaining_classes` |
 | `cancel_lesson_atomic` | Cancels lesson + refunds `remaining_classes` |
 | `complete_lesson_atomic` | Teacher marks lesson complete → `pending_confirmation` |
+| `incomplete_lesson_atomic` | Teacher marks lesson as incomplete (reverses completion) |
 | `dispute_lesson` | Student disputes → `disputed` |
 
 ## When Schema Changes

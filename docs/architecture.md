@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── ui/              # Reusable UI (Button, Card, Input, etc.)

@@ -70,11 +70,7 @@ After running `npx supabase start`, get the real anon key:
 npx supabase status | grep "anon key"
 ```
 
-Make sure this file is gitignored:
-
-```bash
-echo ".env.local.dev" >> .gitignore
-```
+Both `.env.local.dev` and `supabase/.env.local` are already covered by the repo's `.gitignore` (via `.env.local.*` and `*.local` patterns) — no manual changes needed.
 
 ### 2. Edge Functions environment file
 
@@ -85,12 +81,6 @@ Create `supabase/.env.local`:
 STRIPE_SECRET_KEY=sk_test_YOUR_TEST_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=whsec_test_YOUR_WEBHOOK_SECRET   # optional
 APP_URL=http://localhost:5174
-```
-
-Make sure it's gitignored:
-
-```bash
-echo "supabase/.env.local" >> .gitignore
 ```
 
 ---
@@ -106,7 +96,7 @@ npm run local:supabase
 ```
 
 Wait for:
-```
+```text
 API URL: http://127.0.0.1:54321
 Studio URL: http://127.0.0.1:54323
 ```
@@ -229,9 +219,9 @@ npm run local:stop
 npx supabase stop --no-backup
 rm -rf .supabase/
 
-# Full cleanup (~15–20 GB recovered — re-downloads images next time)
+# Stop Supabase and remove this project's local data (~2–5 GB)
 npm run local:cleanup
-# or: npx supabase stop --no-backup && rm -rf .supabase/ && docker system prune -a --volumes -f
+# or: npx supabase stop --no-backup && rm -rf .supabase/
 
 # Check how much space Docker is using
 docker system df

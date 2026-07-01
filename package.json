@@ -13,7 +13,7 @@
     "local:functions": "npx supabase functions serve --env-file supabase/.env.local",
     "local:start": "cp .env.local.dev .env.local && npm run dev",
     "local:stop": "npx supabase stop --no-backup",
-    "local:cleanup": "npx supabase stop --no-backup && rm -rf .supabase/ && docker system prune -a --volumes -f"
+    "local:cleanup": "npx supabase stop --no-backup && rm -rf .supabase/"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
