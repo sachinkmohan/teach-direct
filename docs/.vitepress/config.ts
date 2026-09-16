@@ -44,6 +44,12 @@ export default defineConfig({
           { text: 'Stripe Payments (Local)', link: '/testing-stripe-payments' },
         ],
       },
+      {
+        text: 'Research',
+        items: [
+          { text: 'Calendar Rendering Library', link: '/research/calendar-rendering-library' },
+        ],
+      },
     ],
   },
 })
