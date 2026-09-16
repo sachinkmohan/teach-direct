@@ -40,6 +40,12 @@ export default defineConfig({
           { text: 'Stripe Payments (Local)', link: '/testing-stripe-payments' },
         ],
       },
+      {
+        text: 'Research',
+        items: [
+          { text: 'iCal Feed', link: '/research/ical-feed' },
+        ],
+      },
     ],
   },
 })
