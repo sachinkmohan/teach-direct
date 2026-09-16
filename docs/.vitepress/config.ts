@@ -47,7 +47,14 @@ export default defineConfig({
       {
         text: 'Research',
         items: [
+      {
+        text: 'Research',
+        items: [
           { text: 'Recurrence Expansion & DST', link: '/research/recurrence-expansion' },
+          { text: 'iCal Feed', link: '/research/ical-feed' },
+          { text: 'Calendar Rendering Library', link: '/research/calendar-rendering-library' },
+        ],
+      },
         ],
       },
     ],
