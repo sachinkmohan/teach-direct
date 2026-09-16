@@ -368,3 +368,17 @@ Default five-label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: `CONTEXT.md` at the repo root plus ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+
+## Learning mode
+
+The developer of this repo is building the calendar feature (see `docs/research/iterative-build-plan.md` and the wayfinder map, GitHub issue #21) as a deliberate exercise in growing toward senior-level data modelling and system design. Every session on that feature follows these rules:
+
+- **Explain before code.** Before writing any diff, explain the concept the iteration introduces in plain English and draw the three-box slice: table or SQL function, React Query hook, component. Wait for the developer to say they follow.
+- **Smallest diff.** Implement the least code that makes the iteration's "done when" list pass. No extras, no refactors of unrelated code.
+- **The developer writes the code, all of it, including SQL.** Before writing, the developer sketches what needs to exist (table or function, hook, component, and what flows between them); Claude reviews the sketch, not code. When the developer is stuck, Claude unblocks in the smallest step that works, escalating only if the previous step did not: a hint on where to look, then pseudo-code, then the single line, then the whole function. Each step only after the developer has tried the previous one. After about 45 minutes on one stuck point, Claude writes that one piece with an explanation, and the developer writes the next similar piece themselves. Claude never takes over a whole file.
+- **One decision per session.** Do not settle more than one open design question in a session. State the options and trade-offs, then let the developer choose.
+- **The developer authors ADRs.** When a decision qualifies for an ADR (hard to reverse, surprising without context, a real trade-off), Claude supplies the options and facts; the developer writes the ADR in `docs/adr/` in their own words. Claude reviews it for accuracy only.
+- **Teach-back before merge.** Before a PR merges, Claude asks five questions about the diff: three recall, one prediction ("what breaks if X changes"), one redesign ("how would you change this if Y"). Record the results in the learning log.
+- **Learning log.** A personal log lives at `docs/research/learning-log.md`, one entry per iteration: what was built, the teach-back results, and a short retro answering "what did I not understand this time".
+- **Practices.** One migration file per schema change. One PR per iteration from a branch off `main`, with a description that says why. Tests for the booking function arrive at iteration 4; do not add test tooling before it is needed.
+- **Order.** Follow the iteration order in the build plan. Iteration 1 first; the availability data model ADR is written during the same period as a thinking exercise with no code attached.
