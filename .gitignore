@@ -44,3 +44,5 @@ unreviewed-docs
 docs/.vitepress/cache
 
 .branches
+# Claude Code agent worktrees
+.claude/worktrees/
