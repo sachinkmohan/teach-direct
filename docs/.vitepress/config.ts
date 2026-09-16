@@ -3,6 +3,10 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Learn From A Tutor — Dev Docs',
   description: 'Internal developer reference',
+  // Agent-facing docs and ADRs are not part of the published site.
+  srcExclude: ['agents/**', 'adr/**'],
+  // Local-dev URLs are intentionally unreachable at build time.
+  ignoreDeadLinks: [/^http:\/\/localhost/],
   themeConfig: {
     sidebar: [
       {
