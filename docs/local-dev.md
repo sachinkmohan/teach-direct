@@ -172,6 +172,41 @@ INSERT INTO auth.users (
 
 ---
 
+## Giving a Test Student a Package
+
+To test booking a lesson (e.g. from `/calendar` or a teacher's page), the student needs an active package with `remaining_classes > 0` — signup alone doesn't create one. The seeded local test users are:
+
+- **John** (teacher): `11111111-1111-1111-1111-111111111111`
+- **Jane** (student): `22222222-2222-2222-2222-222222222222`
+
+In Studio (`http://127.0.0.1:54323`) → SQL Editor, run:
+
+```sql
+insert into packages (
+  student_id,
+  teacher_id,
+  total_classes,
+  remaining_classes,
+  price_per_class,
+  total_amount,
+  duration_minutes,
+  status
+) values (
+  '22222222-2222-2222-2222-222222222222', -- Jane (student)
+  '11111111-1111-1111-1111-111111111111', -- John (teacher)
+  5,
+  5,
+  20.00,
+  100.00,
+  30,
+  'active'
+);
+```
+
+`duration_minutes` must be `30`, `45`, or `60`. Log in as Jane afterward and book a lesson with John — this creates a row in `lessons`, which then appears on `/calendar` and `/lessons`.
+
+---
+
 ## Verifying Isolation from Production
 
 Before starting, confirm you're not pointed at production:

@@ -40,6 +40,9 @@ export function Header() {
                 <Link to="/dashboard">
                   <Button variant="ghost">Dashboard</Button>
                 </Link>
+                <Link to="/calendar">
+                  <Button variant="ghost">Calendar</Button>
+                </Link>
                 <Button onClick={handleLogout} variant="outline">
                   Log Out
                 </Button>
