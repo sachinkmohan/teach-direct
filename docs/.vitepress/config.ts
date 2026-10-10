@@ -50,6 +50,7 @@ export default defineConfig({
           { text: 'Recurrence Expansion & DST', link: '/research/recurrence-expansion' },
           { text: 'iCal Feed', link: '/research/ical-feed' },
           { text: 'Calendar Rendering Library', link: '/research/calendar-rendering-library' },
+          { text: 'CSS Specificity & !important', link: '/research/css-specificity-and-important' },
         ],
       },
     ],

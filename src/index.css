@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* FullCalendar's default timegrid row is ~1.5em (25px), which clips the
+   second line of LessonEventBlock - the time range - inside a 30-minute
+   lesson. 2.6em gives the shortest offering the ~37px its two lines need. */
+.fc .fc-timegrid-slot {
+  height: 2.6em;
+}
